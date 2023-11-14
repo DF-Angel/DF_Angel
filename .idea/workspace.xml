@@ -4,11 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="285d2019-3f97-4687-ba6c-904c09182845" name="Changes" comment="Commit test">
-      <change afterPath="$PROJECT_DIR$/ui.py" afterDir="false" />
+    <list default="true" id="285d2019-3f97-4687-ba6c-904c09182845" name="Changes" comment="Add UI">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gaebal6(main).py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/IDIS_FS_sqlite.db" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/UI.py" beforeDir="false" afterPath="$PROJECT_DIR$/UI.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -57,7 +56,15 @@
       <option name="project" value="LOCAL" />
       <updated>1698735740919</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="Add UI">
+      <option name="closed" value="true" />
+      <created>1699979734213</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1699979734213</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -79,6 +86,7 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Commit test" />
-    <option name="LAST_COMMIT_MESSAGE" value="Commit test" />
+    <MESSAGE value="Add UI" />
+    <option name="LAST_COMMIT_MESSAGE" value="Add UI" />
   </component>
 </project>
