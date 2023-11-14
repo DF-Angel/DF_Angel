@@ -4,33 +4,36 @@ import os
 print(sqlite3.version)
 print(sqlite3.sqlite_version)
 
-conn = sqlite3.connect("./IDIS_FS_sqlite.db", isolation_level=None)
-c = conn.cursor()
-
 def ALLOCATION_create_table():
-    c.execute('''SELECT name FROM sqlite_master WHERE type='table' AND name='ALLOCATION';''')
-    table_exists = c.fetchone()
+    db_path = "./IDIS_FS_sqlite.db"
 
-    if table_exists:
-        # 테이블이 이미 존재하면 삭제
-        c.execute('DROP TABLE ALLOCATION;')
+    # 기존 데이터베이스 파일이 있으면 삭제
+    if os.path.exists(db_path):
+        os.remove(db_path)
+
+    # 새로운 데이터베이스 파일 생성
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+
     # 테이블 생성
     c.execute('''
-            CREATE TABLE ALLOCATION (
-                idx INTEGER PRIMARY KEY AUTOINCREMENT,
-                NAME TEXT,
-                CH INTEGER,
-                START_TIME TEXT,
-                END_TIME TEXT,
-                TOTAL_TIME TEXT,
-                START_OFFSET INTEGER,
-                END_OFFSET INTEGER,
-                SIZE INTEGER
-            );
-        ''')
+        CREATE TABLE ALLOCATION (
+            idx INTEGER PRIMARY KEY AUTOINCREMENT,
+            NAME TEXT,
+            CH INTEGER,
+            START_TIME TEXT,
+            END_TIME TEXT,
+            TOTAL_TIME TEXT,
+            START_OFFSET INTEGER,
+            END_OFFSET INTEGER,
+            SIZE INTEGER
+        );
+    ''')
+
     # 연결 종료
     conn.commit()
     conn.close()
+
 
 def insert_data(name, ch, start_time, end_time, total_time, start_offset, end_offset, size):
     # timedelta를 문자열로 변환
