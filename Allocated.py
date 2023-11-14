@@ -16,7 +16,7 @@ class Allocated:
             file.seek(base + 0x500000, 0)
             magic_signature = file.read(64)
             if magic_signature[:0x1B] != b"This is G2FDb Storage Magic":
-                return 0 #비정상적인 G2FDb 이미지 파일
+                return 0 #비정상적인 G2FDb 이미지 파일 판단
             file.read(64)
 
             block_cnt = 1
