@@ -4,9 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="285d2019-3f97-4687-ba6c-904c09182845" name="Changes" comment="Add UI">
+    <list default="true" id="285d2019-3f97-4687-ba6c-904c09182845" name="Changes" comment="Fix UI.py">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/IDIS_FS_sqlite.db" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/UI.py" beforeDir="false" afterPath="$PROJECT_DIR$/UI.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -64,7 +63,15 @@
       <option name="project" value="LOCAL" />
       <updated>1699979734213</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="Fix UI.py">
+      <option name="closed" value="true" />
+      <created>1699988036073</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1699988036073</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -87,6 +94,7 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Commit test" />
     <MESSAGE value="Add UI" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add UI" />
+    <MESSAGE value="Fix UI.py" />
+    <option name="LAST_COMMIT_MESSAGE" value="Fix UI.py" />
   </component>
 </project>

@@ -14,51 +14,77 @@ class UI_main(QMainWindow):
         super().__init__() # QMainWindow 클래스의 초기화를 수행함. 즉 QMainWindow의 초기화를 호출
 
         self.files = {}  # 파일 경로와 트리 항목(ID)을 저장하는 딕셔너리. 현재 클래스의 인스턴스 변수로, 빈 딕셔너리로 초기화
-        self.init_ui()
+        self.init_ui() # ui 실행 함수 호출
 
     def init_ui(self):
-        self.setWindowTitle("IDIS DVR Analyzer")
-        self.setGeometry(100, 100, 1000, 600) # x, y 좌표, 가로, 세로 크기
+        self.setWindowTitle("IDIS DVR Analyzer by DF_Angel")
+        self.setGeometry(100, 100, 1500, 900)  # x, y, 가로, 세로
 
         # Main widget and layout
-        mainWidget = QWidget(self)
-        self.setCentralWidget(mainWidget)
-        mainLayout = QHBoxLayout(mainWidget)
+        mainWidget = QWidget(self)  # 창 생성
+        self.setCentralWidget(mainWidget)  # 중앙 위젯으로 설정
 
-        # Left tree view
+        # layout -> left, right 두 영역으로 구분
+        layout = QHBoxLayout(mainWidget)
+        leftLayout = QVBoxLayout()  # 수직 (추가 요소 아래쪽에 추가)
+        rightLayout = QVBoxLayout()  # 수직
+
+        layout.addLayout(leftLayout, 1)
+        layout.addLayout(rightLayout, 5)
+
+        treeLayout = QVBoxLayout()
+        mainLayout = QHBoxLayout()
+        hexLayout = QVBoxLayout()
+
         self.tree = QTreeWidget()
-        self.tree.setHeaderLabel('IDIS DVR Images')
-        mainLayout.addWidget(self.tree, 1)
+        self.tree.setHeaderLabel('IDIS DVR Image List')
+        treeLayout.addWidget(self.tree, 1)
+        leftLayout.addLayout(treeLayout, 1)
 
         # Center table view
-        self.listbox = QTableWidget()
-        self.listbox.setColumnCount(9) # 9개 컬럼
-        self.listbox.setHorizontalHeaderLabels(
+        self.blocktable = QTableWidget()
+        self.blocktable.setColumnCount(9)  # 9개 컬럼
+        self.blocktable.setHorizontalHeaderLabels(
             ["Index", "Name", "Channel", "Start Time", "End Time", "Total Time", "Start Offset", "End Offset", "Size"])
-        self.listbox.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.listbox.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        mainLayout.addWidget(self.listbox, 4)
+        self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.blocktable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        mainLayout.addWidget(self.blocktable, 4)
 
-        # Right preview label
         self.preview = QLabel("Preview")
         mainLayout.addWidget(self.preview, 1)
 
-        # Bottom hex display
-        self.hex_display = QTextEdit()
-        mainLayout.addWidget(self.hex_display, 1)
+        rightLayout.addLayout(mainLayout, 2)
 
-        # 메뉴바 생성 함수 호출
+        self.hex_display = QLabel("HEXXXXXXXXXXXXXXXX")
+        self.hex_display.setStyleSheet("background-color: grey")
+        hexLayout.addWidget(self.hex_display, 1)
+
+        rightLayout.addLayout(hexLayout, 1)
+
+        # 메뉴바 생성, hex 함수 호출
         self._create_menubar()
+        self.hex()
 
     def _create_menubar(self):
         menubar = self.menuBar() # 현재 윈도우에 대한 메뉴바 가져옴 / self: 현재 클래스의 인스턴스
 
+        # File
         fileMenu = menubar.addMenu('File')
         loadAction = QAction('Load Image', self)
         loadAction.triggered.connect(self.open_image) # Load Image 액션의 트리거 시그널이 발생 시 self.open_image 메서드 호출
         fileMenu.addAction(loadAction) # "File" 메뉴에 방금 생성한 "Load Image" 액션을 추가
 
-        # Other menu actions...
+        # Search
+        searchMenu = menubar.addMenu('Search')
+
+        # Analysis
+        analysisMenu = menubar.addMenu('Analysis')
+
+        # Help
+        helpMenu = menubar.addMenu('Help')
+
+        # About
+        aboutMenu = menubar.addMenu('About')
 
     def open_image(self):
         filepath, _ = QFileDialog.getOpenFileName(self, "Open file", "", "All Files (*)")  # 이미지 파일 선택, filepath에 경로 저장
@@ -86,7 +112,7 @@ class UI_main(QMainWindow):
             print(f"An error occurred: {e}")
 
     def process_file(self, db_filepath):
-        self.listbox.setRowCount(0)
+        self.blocktable.setRowCount(0)
 
         # Connect to the SQLite database
         connection = sqlite3.connect(db_filepath)
@@ -108,24 +134,26 @@ class UI_main(QMainWindow):
             end_offset = row[7]
             size = row[8]
 
-            rowPosition = self.listbox.rowCount()
-            self.listbox.insertRow(rowPosition)
-            self.listbox.setItem(rowPosition, 0, QTableWidgetItem(str(index)))
-            self.listbox.setItem(rowPosition, 1, QTableWidgetItem(name))
-            self.listbox.setItem(rowPosition, 2, QTableWidgetItem(str(channel)))
-            self.listbox.setItem(rowPosition, 3, QTableWidgetItem(start_time))
-            self.listbox.setItem(rowPosition, 4, QTableWidgetItem(end_time))
-            self.listbox.setItem(rowPosition, 5, QTableWidgetItem(total_time))
-            self.listbox.setItem(rowPosition, 6, QTableWidgetItem(str(start_offset)))
-            self.listbox.setItem(rowPosition, 7, QTableWidgetItem(str(end_offset)))
-            self.listbox.setItem(rowPosition, 8, QTableWidgetItem(str(size)))
+            rowPosition = self.blocktable.rowCount()
+            self.blocktable.insertRow(rowPosition)
+            self.blocktable.setItem(rowPosition, 0, QTableWidgetItem(str(index)))
+            self.blocktable.setItem(rowPosition, 1, QTableWidgetItem(name))
+            self.blocktable.setItem(rowPosition, 2, QTableWidgetItem(str(channel)))
+            self.blocktable.setItem(rowPosition, 3, QTableWidgetItem(start_time))
+            self.blocktable.setItem(rowPosition, 4, QTableWidgetItem(end_time))
+            self.blocktable.setItem(rowPosition, 5, QTableWidgetItem(total_time))
+            self.blocktable.setItem(rowPosition, 6, QTableWidgetItem(str(start_offset)))
+            self.blocktable.setItem(rowPosition, 7, QTableWidgetItem(str(end_offset)))
+            self.blocktable.setItem(rowPosition, 8, QTableWidgetItem(str(size)))
 
         # Close the database connection
         connection.close()
 
-    # 미리보기
     def update_preview(self, image_path):
         # Image loading and updating preview...
+        pass
+
+    def hex(self):
         pass
 
     def on_tree_select(self):
