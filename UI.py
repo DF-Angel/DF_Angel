@@ -1,24 +1,30 @@
+import binascii
 import sys
 import struct
 import datetime
+import textwrap
+
 from Allocated import Allocated
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenuBar, QAction, QTreeView, QTreeWidget, QTreeWidgetItem,
                              QTableWidget, QTableWidgetItem, QLabel, QTextEdit, QVBoxLayout, QHBoxLayout,
-                             QWidget, QFileDialog, QMessageBox, QGridLayout, QHeaderView)
+                             QWidget, QFileDialog, QMessageBox, QGridLayout, QHeaderView, QTextBrowser)
 from PyQt5.QtCore import Qt
 from PyQt5.QtCore import pyqtSignal
 import sqlite3
 
 class UI_main(QMainWindow):
-    def __init__(self):
+    def __init__(self): # 생성자
         super().__init__() # QMainWindow 클래스의 초기화를 수행함. 즉 QMainWindow의 초기화를 호출
 
         self.files = {}  # 파일 경로와 트리 항목(ID)을 저장하는 딕셔너리. 현재 클래스의 인스턴스 변수로, 빈 딕셔너리로 초기화
         self.init_ui() # ui 실행 함수 호출
 
+        # 생성자에서 itemSelectionChanged 시그널을 연결
+        self.tree.itemSelectionChanged.connect(self.on_tree_select)
+
     def init_ui(self):
         self.setWindowTitle("IDIS DVR Analyzer by DF_Angel")
-        self.setGeometry(100, 100, 1500, 900)  # x, y, 가로, 세로
+        self.setGeometry(100, 100, 1000, 600)  # x, y, 가로, 세로
 
         # Main widget and layout
         mainWidget = QWidget(self)  # 창 생성
@@ -34,14 +40,19 @@ class UI_main(QMainWindow):
 
         treeLayout = QVBoxLayout()
         mainLayout = QHBoxLayout()
-        hexLayout = QVBoxLayout()
+        hexLayout = QHBoxLayout()
 
+        hexoffsetLayout = QVBoxLayout()
+        hexdisplayLayout = QVBoxLayout()
+        asciiLayout = QVBoxLayout()
+
+        # 왼쪽 영역
         self.tree = QTreeWidget()
         self.tree.setHeaderLabel('IDIS DVR Image List')
         treeLayout.addWidget(self.tree, 1)
         leftLayout.addLayout(treeLayout, 1)
 
-        # Center table view
+        # 오른쪽 영역 - mainLayout
         self.blocktable = QTableWidget()
         self.blocktable.setColumnCount(9)  # 9개 컬럼
         self.blocktable.setHorizontalHeaderLabels(
@@ -55,15 +66,55 @@ class UI_main(QMainWindow):
 
         rightLayout.addLayout(mainLayout, 2)
 
-        self.hex_display = QLabel("HEXXXXXXXXXXXXXXXX")
+        # 오른쪽 영역 - hexLayout
+        self.hex_offset_header = QLabel("Offset")  # 새로운 QLabel 위젯 생성
+        self.hex_offset_header.setStyleSheet("background-color: white")
+        self.hex_offset_header.setStyleSheet("color: blue")
+        hexoffsetLayout.addWidget(self.hex_offset_header, 1)  #
+
+        self.hex_offset = QTextEdit()
+        self.hex_offset.setStyleSheet("background-color: white")
+        self.hex_offset.setStyleSheet("color: blue")
+        self.hex_offset.setReadOnly(True)  # 읽기 전용으로 설정 (편집 불가능)
+        self.hex_offset.setLineWrapMode(QTextEdit.NoWrap)  # 자동 줄 바꿈 비활성화
+        self.hex_offset.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff) #
+        hexoffsetLayout.addWidget(self.hex_offset, 8) #
+        hexLayout.addLayout(hexoffsetLayout, 1)
+
+        #====================================
+
+        self.hex_display_header = QLabel("00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F")  # 새로운 QLabel 위젯 생성
+        self.hex_display_header.setStyleSheet("background-color: white")
+        hexdisplayLayout.addWidget(self.hex_display_header, 1)  #
+
+        self.hex_display = QTextBrowser()
         self.hex_display.setStyleSheet("background-color: grey")
-        hexLayout.addWidget(self.hex_display, 1)
+        self.hex_display.setReadOnly(True) # 읽기 전용으로 설정 (편집 불가능)
+        self.hex_display.setLineWrapMode(QTextBrowser.NoWrap)  # 자동 줄 바꿈 비활성화
+        hexdisplayLayout.addWidget(self.hex_display, 8)  #
+        hexLayout.addLayout(hexdisplayLayout, 5)
+
+        # ====================================
+
+        self.ascii_display_header = QLabel("Decoded Text (ASCII)")  # 새로운 QLabel 위젯 생성
+        self.ascii_display_header.setStyleSheet("background-color: white")
+        asciiLayout.addWidget(self.ascii_display_header, 1)  #
+
+        self.ascii_display = QTextBrowser()
+        self.ascii_display.setStyleSheet("background-color: grey")
+        self.ascii_display.setReadOnly(True)  # 읽기 전용으로 설정 (편집 불가능)
+        self.ascii_display.setLineWrapMode(QTextBrowser.NoWrap)  # 자동 줄 바꿈 비활성화
+        asciiLayout.addWidget(self.ascii_display, 8)  #
+        hexLayout.addLayout(asciiLayout, 5)
+
 
         rightLayout.addLayout(hexLayout, 1)
 
+        # 스크롤 같이 동작하도록 시그널
+        self.hex_display.verticalScrollBar().valueChanged.connect(self.on_hex_display_scroll)
+
         # 메뉴바 생성, hex 함수 호출
         self._create_menubar()
-        self.hex()
 
     def _create_menubar(self):
         menubar = self.menuBar() # 현재 윈도우에 대한 메뉴바 가져옴 / self: 현재 클래스의 인스턴스
@@ -111,7 +162,7 @@ class UI_main(QMainWindow):
         except Exception as e:
             print(f"An error occurred: {e}")
 
-    def process_file(self, db_filepath):
+    def process_file(self, db_filepath): # db에서 가져와서 보여주는
         self.blocktable.setRowCount(0)
 
         # Connect to the SQLite database
@@ -153,20 +204,59 @@ class UI_main(QMainWindow):
         # Image loading and updating preview...
         pass
 
-    def hex(self):
-        pass
-
     def on_tree_select(self):
-        selected_items = self.tree.selectedItems()
+        selected_items = self.tree.selectedItems() # 현재 선택된 항목의 목록 가져오기
+
         if selected_items:
             selected_item = selected_items[0]
             for filepath, item in self.files.items():
                 if item == selected_item:
-                    self.process_file(filepath)
+                    with open(filepath, 'rb') as file:
+                        hex_value = file.read(5000).hex()
+                        formatted_hex_lines = self.format_hex_lines(hex_value)  # 포맷된 라인 리스트로 받음
+
+                        self.display_hex_value(formatted_hex_lines)
+                        self.update_hex_offset(formatted_hex_lines)
+
+                        ascii_lines = self.decode_hex_to_ascii(formatted_hex_lines) #
+                        self.ascii_display.setPlainText(''.join(ascii_lines)) #
                     break
+
+    def format_hex_lines(self, hex_value):
+        hex_lines = textwrap.wrap(hex_value, 32)  # textwrap.wrap을 사용하여 hex 문자열을 32자씩 분할하여 리스트 생성
+        formatted_hex_lines = [' '.join(line[i:i + 2] for i in range(0, len(line), 2)) for line in hex_lines]
+        return formatted_hex_lines
+
+    def display_hex_value(self, formatted_hex_lines):
+        formatted_hex = '\n'.join(line for line in formatted_hex_lines)
+        self.hex_display.setPlainText(formatted_hex)
+
+    def update_hex_offset(self, formatted_hex_lines):
+        offset = 0
+        hex_offset_text = ""
+
+        for line in formatted_hex_lines:
+            hex_offset_text += f'0x{offset:08X}\n' # offset 값을 16진수로 표현
+            offset += 16
+
+        self.hex_offset.setText(hex_offset_text)
+
+    def decode_hex_to_ascii(self, hex_lines):
+        ascii_lines = []
+        for line in hex_lines:
+            ascii_line = binascii.unhexlify(line.replace(" ", "")).decode('ascii', 'ignore')
+            ascii_lines.append(ascii_line)
+        return ascii_lines
+
+    def on_hex_display_scroll(self):
+        # Get the value of the hex_display scrollbar
+        hex_display_scroll_value = self.hex_display.verticalScrollBar().value()
+
+        # Set the value of the hex_offset scrollbar to match hex_display
+        self.hex_offset.verticalScrollBar().setValue(hex_display_scroll_value)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv) # PyQt 애플리케이션 시작위해 PyQt의 QApplication 클래스를 인스턴스화
     ex = UI_main() # UI_main 클래스의 인스턴스를 생성합니다. 이것은 PyQt에서 사용자 인터페이스를 정의하는 클래스일 것으로 예상됩니다.
-    ex.show() # 생성된 UI의 화면을 표시합니다. PyQt 애플리케이션에서는 이 메서드를 호출하여 UI를 사용자에게 보여줍니다.
+    ex.show() # 생성된 UI 화면 표시
     sys.exit(app.exec_())
