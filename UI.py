@@ -4,7 +4,7 @@ import struct
 import datetime
 import textwrap
 
-from Rootscan import Rootscan
+from Root_Scan import Root_Scan
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenuBar, QAction, QTreeView, QTreeWidget, QTreeWidgetItem,
                              QTableWidget, QTableWidgetItem, QLabel, QTextEdit, QVBoxLayout, QHBoxLayout,
                              QWidget, QFileDialog, QMessageBox, QGridLayout, QHeaderView, QTextBrowser)
@@ -145,13 +145,13 @@ class UI_main(QMainWindow):
         filepath, _ = QFileDialog.getOpenFileName(self, "Open file", "", "All Files (*)")  # 이미지 파일 선택, filepath에 경로 저장
 
         try:
-            df = Allocated(filepath)  # Allocated()에 경로 넘기고 객체로 받기
+            df = Root_Scan(filepath)  # Root_Scan()에 경로 넘기고 객체로 받기
 
             if df.check_G2FDb() == 0:  # 파일이 정상적으로 열렸는지 확인
                 print("Invalid G2FDb image file. Exiting.")
                 sys.exit()  # 프로그램 종료
 
-            df.analyzer()  # Allocated 클래스의 analyzer 메소드 호출해 파일 분석, db 생성
+            df.analyzer()  # Root_Scan 클래스의 analyzer 메소드 호출해 파일 분석, db 생성
 
             if filepath:
                 filename = filepath.split("/")[-1]  # 경로에서 파일 이름만 추출
