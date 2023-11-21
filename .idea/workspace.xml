@@ -4,9 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="285d2019-3f97-4687-ba6c-904c09182845" name="Changes" comment="Rootscan">
+    <list default="true" id="285d2019-3f97-4687-ba6c-904c09182845" name="Changes" comment="RootScan">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Rootscan.py" beforeDir="false" afterPath="$PROJECT_DIR$/RootScan.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RootScan.py" beforeDir="false" afterPath="$PROJECT_DIR$/Root_Scan.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/UI.py" beforeDir="false" afterPath="$PROJECT_DIR$/UI.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -110,7 +110,15 @@
       <option name="project" value="LOCAL" />
       <updated>1700553557574</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="RootScan">
+      <option name="closed" value="true" />
+      <created>1700553825997</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1700553825997</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -138,6 +146,18 @@
     <MESSAGE value="UI hex" />
     <MESSAGE value="UI ascii, warning, db" />
     <MESSAGE value="Rootscan" />
-    <option name="LAST_COMMIT_MESSAGE" value="Rootscan" />
+    <MESSAGE value="RootScan" />
+    <option name="LAST_COMMIT_MESSAGE" value="RootScan" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/Root_Scan.py</url>
+          <line>3</line>
+          <option name="timeStamp" value="3" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>

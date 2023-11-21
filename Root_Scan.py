@@ -1,7 +1,7 @@
 from CommonFunction import *
 from sqlite_db import *
 
-class RootScan:
+class Root_Scan:
     def __init__(self, imagefile):
         self.f = imagefile
     def check_G2FDb(self):
