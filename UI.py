@@ -4,7 +4,7 @@ import struct
 import datetime
 import textwrap
 
-from Allocated import Allocated
+from Rootscan import Rootscan
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenuBar, QAction, QTreeView, QTreeWidget, QTreeWidgetItem,
                              QTableWidget, QTableWidgetItem, QLabel, QTextEdit, QVBoxLayout, QHBoxLayout,
                              QWidget, QFileDialog, QMessageBox, QGridLayout, QHeaderView, QTextBrowser)

@@ -1,7 +1,7 @@
 from CommonFunction import *
 from sqlite_db import *
 
-class Allocated:
+class Rootscan:
     def __init__(self, imagefile):
         self.f = imagefile
     def check_G2FDb(self):
@@ -28,7 +28,6 @@ class Allocated:
                     continue
                 start_time = convert_to_datetime(int.from_bytes(block_index[0x06:0x0A], byteorder='little'))
                 end_time = convert_to_datetime(int.from_bytes(block_index[0x12:0x16], byteorder='little'))
-                total_time = end_time - start_time
                 ch = block_index[0x22]
-                insert_data('Block ' + str(block_cnt), ch, start_time, end_time, total_time, 0x10000000 * block_cnt, 0x10000000 * (block_cnt + 1) - 1, 0x10000000)
+                insert_data('Block ' + str(block_cnt), ch, start_time, end_time, 0x10000000 * block_cnt, 0x10000000 * (block_cnt + 1) - 1, 0x10000000)
                 block_cnt += 1
