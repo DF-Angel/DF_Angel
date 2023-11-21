@@ -1,32 +1,26 @@
 import sqlite3
 import os
 
-print(sqlite3.version)
-print(sqlite3.sqlite_version)
-
-def ALLOCATION_create_table():
+def connect_db():
     db_path = "./IDIS_FS_sqlite.db"
+    return sqlite3.connect(db_path, isolation_level=None)
 
-    # 기존 데이터베이스 파일이 있으면 삭제
+
+def del_db():
+    db_path = "./IDIS_FS_sqlite.db"
     if os.path.exists(db_path):
         os.remove(db_path)
 
-    # 새로운 데이터베이스 파일 생성
-    conn = sqlite3.connect(db_path)
+
+def create_table(table_name, columns):
+    conn = connect_db()
     c = conn.cursor()
 
     # 테이블 생성
-    c.execute('''
-        CREATE TABLE ALLOCATION (
+    c.execute(f'''
+        CREATE TABLE {table_name} (
             idx INTEGER PRIMARY KEY AUTOINCREMENT,
-            NAME TEXT,
-            CH INTEGER,
-            START_TIME TEXT,
-            END_TIME TEXT,
-            TOTAL_TIME TEXT,
-            START_OFFSET INTEGER,
-            END_OFFSET INTEGER,
-            SIZE INTEGER
+            {columns}
         );
     ''')
 
@@ -35,19 +29,26 @@ def ALLOCATION_create_table():
     conn.close()
 
 
-def insert_data(name, ch, start_time, end_time, total_time, start_offset, end_offset, size):
-    # timedelta를 문자열로 변환
-    total_time_str = str(total_time)
-
-    conn = sqlite3.connect("./IDIS_FS_sqlite.db", isolation_level=None)
+def insert_data(name, ch, start_time, end_time, start_offset, end_offset, size):
+    conn = connect_db()
     c = conn.cursor()
 
     c.execute('''
-        INSERT INTO ALLOCATION (NAME, CH, START_TIME, END_TIME, TOTAL_TIME, START_OFFSET, END_OFFSET, SIZE)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?);
-    ''', (name, ch, start_time, end_time, total_time_str, start_offset, end_offset, size))
+        INSERT INTO ROOTSCAN (NAME, CH, START_TIME, END_TIME, START_OFFSET, END_OFFSET, SIZE)
+        VALUES (?, ?, ?, ?, ?, ?, ?);
+    ''', (name, ch, start_time, end_time, start_offset, end_offset, size))
 
     conn.commit()
     conn.close()
 
-ALLOCATION_create_table()
+
+# 데이터베이스 초기화
+del_db()
+
+# ROOTSCAN 테이블 생성
+create_table("ROOTSCAN",
+             "NAME TEXT, CH INTEGER, START_TIME TEXT, END_TIME TEXT, START_OFFSET INTEGER, END_OFFSET INTEGER, SIZE INTEGER")
+
+# ALLOCATION 테이블 생성
+create_table("ALLOCATION",
+             "NAME TEXT, BLOCK INTEGER, CH INTEGER, START_TIME TEXT, END_TIME TEXT, START_OFFSET INTEGER, END_OFFSET INTEGER, SIZE INTEGER, TYPE_PARTIAL TEXT")
