@@ -1,7 +1,6 @@
 import sqlite3
 import os
 
-
 def connect_db():
     db_path = "./IDIS_FS_sqlite.db"
     return sqlite3.connect(db_path, isolation_level=None)
