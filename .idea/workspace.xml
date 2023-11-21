@@ -4,7 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="285d2019-3f97-4687-ba6c-904c09182845" name="Changes" comment="UI layout">
+    <list default="true" id="285d2019-3f97-4687-ba6c-904c09182845" name="Changes" comment="UI hex">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/UI.py" beforeDir="false" afterPath="$PROJECT_DIR$/UI.py" afterDir="false" />
     </list>
@@ -85,7 +85,15 @@
       <option name="project" value="LOCAL" />
       <updated>1700046061881</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="UI hex">
+      <option name="closed" value="true" />
+      <created>1700386037038</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1700386037038</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -110,6 +118,7 @@
     <MESSAGE value="Add UI" />
     <MESSAGE value="Fix UI.py" />
     <MESSAGE value="UI layout" />
-    <option name="LAST_COMMIT_MESSAGE" value="UI layout" />
+    <MESSAGE value="UI hex" />
+    <option name="LAST_COMMIT_MESSAGE" value="UI hex" />
   </component>
 </project>

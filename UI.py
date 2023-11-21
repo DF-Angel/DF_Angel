@@ -79,7 +79,7 @@ class UI_main(QMainWindow):
         self.hex_offset.setLineWrapMode(QTextEdit.NoWrap)  # 자동 줄 바꿈 비활성화
         self.hex_offset.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff) #
         hexoffsetLayout.addWidget(self.hex_offset, 8) #
-        hexLayout.addLayout(hexoffsetLayout, 1)
+        hexLayout.addLayout(hexoffsetLayout, 2)
 
         #====================================
 
@@ -88,9 +88,10 @@ class UI_main(QMainWindow):
         hexdisplayLayout.addWidget(self.hex_display_header, 1)  #
 
         self.hex_display = QTextBrowser()
-        self.hex_display.setStyleSheet("background-color: grey")
+        self.hex_display.setStyleSheet("background-color: #CCCCCC")
         self.hex_display.setReadOnly(True) # 읽기 전용으로 설정 (편집 불가능)
         self.hex_display.setLineWrapMode(QTextBrowser.NoWrap)  # 자동 줄 바꿈 비활성화
+        self.hex_display.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)  #
         hexdisplayLayout.addWidget(self.hex_display, 8)  #
         hexLayout.addLayout(hexdisplayLayout, 5)
 
@@ -101,20 +102,23 @@ class UI_main(QMainWindow):
         asciiLayout.addWidget(self.ascii_display_header, 1)  #
 
         self.ascii_display = QTextBrowser()
-        self.ascii_display.setStyleSheet("background-color: grey")
+        self.ascii_display.setStyleSheet("background-color: #CCCCCC")
         self.ascii_display.setReadOnly(True)  # 읽기 전용으로 설정 (편집 불가능)
         self.ascii_display.setLineWrapMode(QTextBrowser.NoWrap)  # 자동 줄 바꿈 비활성화
         asciiLayout.addWidget(self.ascii_display, 8)  #
         hexLayout.addLayout(asciiLayout, 5)
 
-
         rightLayout.addLayout(hexLayout, 1)
 
-        # 스크롤 같이 동작하도록 시그널
-        self.hex_display.verticalScrollBar().valueChanged.connect(self.on_hex_display_scroll)
+        # ====================================
 
-        # 메뉴바 생성, hex 함수 호출
+        # 스크롤 같이 동작하도록 시그널, 메뉴바 생성
+        self.ascii_display.verticalScrollBar().valueChanged.connect(self.on_ascii_display_scroll)
         self._create_menubar()
+
+        # Show the warning message after process_file
+        # self.show_warning_message()
+
 
     def _create_menubar(self):
         menubar = self.menuBar() # 현재 윈도우에 대한 메뉴바 가져옴 / self: 현재 클래스의 인스턴스
@@ -157,6 +161,7 @@ class UI_main(QMainWindow):
 
             db_filepath = './IDIS_FS_sqlite.db'
             self.process_file(db_filepath)  # 파일 처리 메서드 호출
+            self.show_warning_message()  # Show the warning message after process_file
             # self.update_preview(db_filepath) # 미리보기 메서드 호출
 
         except Exception as e:
@@ -170,20 +175,18 @@ class UI_main(QMainWindow):
         cursor = connection.cursor()
 
         # Query to retrieve data from the allocation table
-        query = "SELECT * FROM ALLOCATION"
+        query = "SELECT * FROM ROOTSCAN"
         cursor.execute(query)
 
         for row in cursor.fetchall():
             index = row[0]
             name = row[1]
             channel = row[2]
-            # print(channel)
             start_time = row[3]
             end_time = row[4]
-            total_time = row[5]
-            start_offset = row[6]
-            end_offset = row[7]
-            size = row[8]
+            start_offset = row[5]
+            end_offset = row[6]
+            size = row[7]
 
             rowPosition = self.blocktable.rowCount()
             self.blocktable.insertRow(rowPosition)
@@ -192,10 +195,9 @@ class UI_main(QMainWindow):
             self.blocktable.setItem(rowPosition, 2, QTableWidgetItem(str(channel)))
             self.blocktable.setItem(rowPosition, 3, QTableWidgetItem(start_time))
             self.blocktable.setItem(rowPosition, 4, QTableWidgetItem(end_time))
-            self.blocktable.setItem(rowPosition, 5, QTableWidgetItem(total_time))
-            self.blocktable.setItem(rowPosition, 6, QTableWidgetItem(str(start_offset)))
-            self.blocktable.setItem(rowPosition, 7, QTableWidgetItem(str(end_offset)))
-            self.blocktable.setItem(rowPosition, 8, QTableWidgetItem(str(size)))
+            self.blocktable.setItem(rowPosition, 5, QTableWidgetItem(str(start_offset)))
+            self.blocktable.setItem(rowPosition, 6, QTableWidgetItem(str(end_offset)))
+            self.blocktable.setItem(rowPosition, 7, QTableWidgetItem(str(size)))
 
         # Close the database connection
         connection.close()
@@ -217,9 +219,7 @@ class UI_main(QMainWindow):
 
                         self.display_hex_value(formatted_hex_lines)
                         self.update_hex_offset(formatted_hex_lines)
-
-                        ascii_lines = self.decode_hex_to_ascii(formatted_hex_lines) #
-                        self.ascii_display.setPlainText(''.join(ascii_lines)) #
+                        self.display_ascii(formatted_hex_lines) #
                     break
 
     def format_hex_lines(self, hex_value):
@@ -241,19 +241,57 @@ class UI_main(QMainWindow):
 
         self.hex_offset.setText(hex_offset_text)
 
-    def decode_hex_to_ascii(self, hex_lines):
+    def display_ascii(self, formatted_hex_lines):
         ascii_lines = []
-        for line in hex_lines:
+
+        for line in formatted_hex_lines:
             ascii_line = binascii.unhexlify(line.replace(" ", "")).decode('ascii', 'ignore')
             ascii_lines.append(ascii_line)
-        return ascii_lines
 
-    def on_hex_display_scroll(self):
-        # Get the value of the hex_display scrollbar
-        hex_display_scroll_value = self.hex_display.verticalScrollBar().value()
+        # 리스트를 개행 문자를 이용하여 문자열로 결합
+        formatted_ascii = '\n'.join(ascii_lines)
 
-        # Set the value of the hex_offset scrollbar to match hex_display
-        self.hex_offset.verticalScrollBar().setValue(hex_display_scroll_value)
+        self.ascii_display.setPlainText(formatted_ascii)
+
+    def on_ascii_display_scroll(self):
+        # Get the value of the ascii_display scrollbar
+        ascii_display_scroll_value = self.ascii_display.verticalScrollBar().value()
+
+        # Set the value of the hex_display scrollbar to match ascii_display
+        self.hex_display.verticalScrollBar().setValue(ascii_display_scroll_value)
+
+        # Set the value of the hex_offset scrollbar to match ascii_display
+        self.hex_offset.verticalScrollBar().setValue(ascii_display_scroll_value)
+
+    def show_warning_message(self):
+        # Add a warning message
+        warning_message = QMessageBox()
+        warning_message.setIcon(QMessageBox.Warning)
+        warning_message.setText("Warning: Performing a precise scan may take a long time.\nDo you want to proceed?")
+        warning_message.setWindowTitle("Warning")
+        warning_message.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        warning_message.setDefaultButton(QMessageBox.No)
+
+        # Connect the warning message buttons to functions
+        warning_message.buttonClicked.connect(self.on_warning_button_clicked)
+
+        # Show the warning message
+        result = warning_message.exec_()
+
+        if result == QMessageBox.Yes:
+            print("User clicked Yes. Proceeding with precise scan.")
+            # Perform additional actions if needed after clicking Yes
+        else:
+            print("User clicked No. Cancelling precise scan.")
+            # Perform additional actions if needed after clicking No
+
+    def on_warning_button_clicked(self, button):
+        if button.text() == "&Yes":
+            print("Yes button clicked.")
+        elif button.text() == "&No":
+            print("No button clicked.")
+        else:
+            print("Unknown button clicked.")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv) # PyQt 애플리케이션 시작위해 PyQt의 QApplication 클래스를 인스턴스화
