@@ -42,6 +42,19 @@ def insert_data(name, ch, start_time, end_time, start_offset, end_offset, size):
     conn.close()
 
 
+def insert_data_log(EVENT, DATETIME):
+    conn = connect_db()
+    c = conn.cursor()
+
+    c.execute('''
+        INSERT INTO LOG (EVENT, DATETIME)
+        VALUES (?, ?);
+    ''', (EVENT, DATETIME))
+
+    conn.commit()
+    conn.close()
+
+
 # 데이터베이스 초기화
 del_db()
 
@@ -50,5 +63,9 @@ create_table("ROOTSCAN",
              "NAME TEXT, CH INTEGER, START_TIME TEXT, END_TIME TEXT, START_OFFSET INTEGER, END_OFFSET INTEGER, SIZE INTEGER")
 
 # ALLOCATION 테이블 생성
-create_table("ALLOCATION",
-             "NAME TEXT, BLOCK INTEGER, CH INTEGER, START_TIME TEXT, END_TIME TEXT, START_OFFSET INTEGER, END_OFFSET INTEGER, SIZE INTEGER, TYPE_PARTIAL TEXT")
+create_table("PRECISE_SCAN",
+             "NAME TEXT, BLOCK INTEGER, CH INTEGER, START_TIME TEXT, END_TIME TEXT, DURATION TEST, START_OFFSET INTEGER, END_OFFSET INTEGER, SIZE INTEGER, DEL_TYPE INTEGER, I_FRAME INTEGER, P_FRAME INTEGER, IS_IT_DEL INTEGER")
+
+
+create_table("LOG",
+             "EVENT TEXT, DATETIME TEXT")
