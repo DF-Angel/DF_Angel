@@ -54,7 +54,6 @@ def insert_data_log(EVENT, DATETIME):
     conn.commit()
     conn.close()
 
-
 # 데이터베이스 초기화
 del_db()
 
