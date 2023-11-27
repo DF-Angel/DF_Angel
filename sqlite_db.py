@@ -42,6 +42,19 @@ def insert_data(name, ch, start_time, end_time, start_offset, end_offset, size):
     conn.close()
 
 
+def insert_data_PRECISE_SCAN(name, ch, start_time, end_time,duration, start_offset, end_offset,size, del_type, i_frame, p_frame, is_it_del):
+    conn = connect_db()
+    c = conn.cursor()
+
+    c.execute('''
+        INSERT INTO PRECISE_SCAN (NAME , BLOCK , CH , START_TIME , END_TIME , DURATION , START_OFFSET , END_OFFSET ,SIZE, DEL_TYPE, I_FRAME, P_FRAME, IS_IT_DEL)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    ''', (name, ch, start_time, end_time,duration, start_offset, end_offset,size, del_type, i_frame, p_frame, is_it_del))
+
+    conn.commit()
+    conn.close()
+
+
 def insert_data_log(EVENT, DATETIME):
     conn = connect_db()
     c = conn.cursor()
@@ -58,7 +71,7 @@ def insert_data_log(EVENT, DATETIME):
 del_db()
 
 # ROOTSCAN 테이블 생성
-create_table("ROOTSCAN",
+create_table("ROOT_SCAN",
              "NAME TEXT, CH INTEGER, START_TIME TEXT, END_TIME TEXT, START_OFFSET INTEGER, END_OFFSET INTEGER, SIZE INTEGER")
 
 # ALLOCATION 테이블 생성
