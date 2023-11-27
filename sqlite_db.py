@@ -34,7 +34,7 @@ def insert_data(name, ch, start_time, end_time, start_offset, end_offset, size):
     c = conn.cursor()
 
     c.execute('''
-        INSERT INTO ROOTSCAN (NAME, CH, START_TIME, END_TIME, START_OFFSET, END_OFFSET, SIZE)
+        INSERT INTO ROOT_SCAN (NAME, CH, START_TIME, END_TIME, START_OFFSET, END_OFFSET, SIZE)
         VALUES (?, ?, ?, ?, ?, ?, ?);
     ''', (name, ch, start_time, end_time, start_offset, end_offset, size))
 
