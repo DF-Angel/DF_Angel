@@ -183,7 +183,7 @@ class Allocated_Block_Scan:
             frame_channel = frame_meta[0x18]
             frame_type = frame_meta[0x1A]
             frame_offset = int.from_bytes(frame_meta[0x1C:0x20], byteorder='little')
-            while frame_time > block_end_time:
+            while frame_set[-1]["frame_time"] <= frame_time:
                 frame_set.append(
                     {
                         "frame_time": frame_time,
@@ -232,4 +232,5 @@ class Allocated_Block_Scan:
         elif status == 3:
             del_type = "부분 삭제(끝)"
         # Perform further actions as needed with the organized frame set
-        print(f"Start Time: {start_time}, Last Time: {last_time}, Channel: {channel}, Start Offset: {start_offset}, Last Offset: {last_offset}, Del Type: {del_type}")
+        #print(f"Start Time: {start_time}, Last Time: {last_time}, Channel: {channel}, Start Offset: {start_offset}, Last Offset: {last_offset}, Del Type: {del_type}")
+        print(f"Start Time: {start_time}, Last Time: {last_time}, Channel: {channel}, Del Type: {del_type}")
