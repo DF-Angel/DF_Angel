@@ -303,14 +303,16 @@ class UI_main(QMainWindow):
         filter_start_datetime = QDateTime(selected_date, QTime.fromString(start_time, 'HH:mm:ss'))
         filter_end_datetime = QDateTime(selected_date, QTime.fromString(end_time, 'HH:mm:ss'))
 
-        # 생성된 QDateTime 객체의 유효성을 검사하고 필터링을 수행합니다
+        # 생성된 QDateTime 객체의 유효성을 검사하고 필터링을 수행
         if filter_start_datetime.isValid() and filter_end_datetime.isValid():
-            self.filter_data_by_datetime(filter_start_datetime, filter_end_datetime)
+            db_filepath = './IDIS_FS_sqlite.db'
+            # 필터링된 데이터를 처리
+            self.process_file(db_filepath, filter_start_datetime, filter_end_datetime)
             self.time_range_dialog.accept()
         else:
-            # 유효하지 않은 입력에 대한 처리를 합니다
-            # 여기에 에러 메시지를 표시하거나 사용자에게 다시 입력하도록 요청할 수 있습니다
-            pass 
+            # 유효하지 않은 입력에 대한 처리
+            # 여기에 에러 메시지를 표시하거나 사용자에게 다시 입력하도록 요청 가능
+            pass
 
 
     def filter_data_by_datetime(self, filter_start_datetime, filter_end_datetime):
@@ -339,39 +341,38 @@ class UI_main(QMainWindow):
         db_filepath = './IDIS_FS_sqlite.db'
         self.process_file(db_filepath)  # 파일 처리 메서드 호출
 
-    def process_file(self, db_filepath):
+    def process_file(self, db_filepath, filter_start_datetime=None, filter_end_datetime=None):
         # SQLite DB와 연결 생성
         connection = sqlite3.connect(db_filepath)
         cursor = connection.cursor()
 
-        # ROOTSCAN 테이블에 쿼리 실행 및 결과 받기
         query = "SELECT * FROM ROOT_SCAN"
         cursor.execute(query)
+        rows = cursor.fetchall()
 
-        self.model.removeRows(0, self.model.rowCount())  # Clear existing data
+        self.model.removeRows(0, self.model.rowCount())  # 기존 데이터 제거
 
-        for row in cursor.fetchall():
-            index = int(row[0]) # 문자열로 하면 정렬이 안돼서 정수로 변환
-            name = row[1]
-            channel = row[2]
-            start_time = row[3]
-            end_time = row[4]
-            start_offset = row[5]
-            end_offset = row[6]
-            size = row[7]
+        for row in rows:
+            row_start_time = QDateTime.fromString(row[3], 'yyyy-MM-dd HH:mm:ss')
 
-            self.model.insertRow(self.model.rowCount())  # Insert a new row
+            # 필터링 조건을 확인하여 데이터를 모델에 추가
+            if not filter_start_datetime or not filter_end_datetime or (filter_start_datetime <= row_start_time <= filter_end_datetime):
+                index = int(row[0])  # 문자열로 하면 정렬이 안돼서 정수로 변환
+                name = row[1]
+                channel = row[2]
+                start_time = row[3]
+                end_time = row[4]
+                start_offset = row[5]
+                end_offset = row[6]
+                size = row[7]
 
-            for col, value in enumerate([index, name, channel, start_time, end_time, start_offset, end_offset, size]):
-                if col == 0:
-                    item = QStandardItem()
-                    item.setData(value, Qt.DisplayRole)
-                else:
+                self.model.insertRow(self.model.rowCount())  # 새로운 행 삽입
+
+                for col, value in enumerate(row):
                     item = QStandardItem(str(value))
-                item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-                self.model.setItem(self.model.rowCount() - 1, col, item)  # Set data in the last row
+                    item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
+                    self.model.setItem(self.model.rowCount() - 1, col, item)
 
-        # Close the database connection
         connection.close()
 
     def update_preview(self, image_path):
