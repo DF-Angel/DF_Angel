@@ -56,7 +56,7 @@ class Allocated_Block_Scan:
                 frame_type = frame_meta[0x1A]
                 frame_offset = int.from_bytes(frame_meta[0x1C:0x20], byteorder='little')
                 #print(frame_time)
-            print("Block : " + str(block_cnt) + ", ", end='')
+            #print("Block : " + str(block_cnt) + ", ", end='')
             process_frame_set(frame_set, status, block_cnt, 0)
             status = 0
             frame_set = []
@@ -92,7 +92,7 @@ class Allocated_Block_Scan:
                     frame_meta = file.read(32)
                     if int.from_bytes(frame_meta[:32]) == 0x00:
                         block_end = 1
-                        print("Block : " + str(block_cnt) + ", ", end='')
+                        #print("Block : " + str(block_cnt) + ", ", end='')
                         process_frame_set(frame_set, status, block_cnt, 0)
                     #    block_end = 1
                         return
@@ -101,7 +101,7 @@ class Allocated_Block_Scan:
                     frame_channel = frame_meta[0x18]
                     frame_type = frame_meta[0x1A]
                     frame_offset = int.from_bytes(frame_meta[0x1C:0x20], byteorder='little')
-                print("Block : " + str(block_cnt) + ", ", end='')
+                #print("Block : " + str(block_cnt) + ", ", end='')
                 process_frame_set(frame_set, status, block_cnt, 0)
 
                 if not(start_frame_time <= frame_time <= block_end_time):
@@ -145,7 +145,7 @@ class Allocated_Block_Scan:
                 #    break
 
             if frame_size == 0:
-                print("Block : " + str(block_cnt) + ", ", end='')
+                #print("Block : " + str(block_cnt) + ", ", end='')
                 process_frame_set(frame_set, status, block_cnt, 0)
                 status = 1
                 frame_set = []
@@ -163,7 +163,7 @@ class Allocated_Block_Scan:
                     bef_frame_offset = frame_offset
                     frame_meta = file.read(32)
                     if int.from_bytes(frame_meta) == 0x00:
-                        print("Block : " + str(block_cnt) + ", ", end='')
+                        #print("Block : " + str(block_cnt) + ", ", end='')
                         process_frame_set(frame_set, status, block_cnt, 0)
                         return
                     frame_time = convert_to_datetime(int.from_bytes(frame_meta[0x04:0x08], byteorder='little'))
@@ -174,7 +174,7 @@ class Allocated_Block_Scan:
                     if frame_set[-1]["frame_time"] > frame_time:
                         allocated_block_end = 0
                         break
-                print("Block : " + str(block_cnt) + ", ", end='')
+                #print("Block : " + str(block_cnt) + ", ", end='')
                 process_frame_set(frame_set, status, block_cnt, 0)
                 status = 0
                 if not(start_frame_time <= frame_time <= block_end_time):
@@ -206,7 +206,7 @@ class Allocated_Block_Scan:
             status = 1
             frame_meta = file.read(32)
             if int.from_bytes(frame_meta[:32]) == 0x00:
-                print("Block : " + str(block_cnt) + ", ", end='')
+                #print("Block : " + str(block_cnt) + ", ", end='')
                 process_frame_set(frame_set, status, block_cnt, 0)
                 return
             frame_time = convert_to_datetime(int.from_bytes(frame_meta[0x04:0x08], byteorder='little'))
@@ -228,7 +228,7 @@ class Allocated_Block_Scan:
                 bef_frame_offset = frame_offset
                 frame_meta = file.read(32)
                 if int.from_bytes(frame_meta[:32]) == 0x00:
-                    print("Block : " + str(block_cnt) + ", ", end='')
+                    #print("Block : " + str(block_cnt) + ", ", end='')
                     process_frame_set(frame_set, status, block_cnt, 0)
                     return
                 frame_time = convert_to_datetime(int.from_bytes(frame_meta[0x04:0x08], byteorder='little'))
@@ -236,7 +236,7 @@ class Allocated_Block_Scan:
                 frame_channel = frame_meta[0x18]
                 frame_type = frame_meta[0x1A]
                 frame_offset = int.from_bytes(frame_meta[0x1C:0x20], byteorder='little')
-            print("Block : " + str(block_cnt) + ", ", end='')
+            #print("Block : " + str(block_cnt) + ", ", end='')
             process_frame_set(frame_set, status, block_cnt, 0)
             status = 0
             file.seek(-32, 1)

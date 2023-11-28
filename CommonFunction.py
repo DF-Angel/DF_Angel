@@ -10,7 +10,11 @@ def convert_to_datetime(time_info):
     day = int(time_info_bin[-22:-17], 2)
     month = int(time_info_bin[-26:-22], 2)
     year = int(time_info_bin[:-26], 2) + 1970
-    return datetime(year, month, day, hour, min, sec)
+
+    try:
+        return datetime(year, month, day, hour, min, sec)
+    except ValueError:
+        return 0  # 파일을 찾을 수 없을 때 0을 반환
 
 def process_frame_set(frame_set, status, block_cnt, AU):
     # Process and organize the complete set of frames
@@ -23,10 +27,17 @@ def process_frame_set(frame_set, status, block_cnt, AU):
     if status == 0:
         del_type = "할당"
     elif status == 1:
-        del_type = "부분 삭제(시작)"
+        del_type = "부분 삭제"
+    elif status == 2:
+        del_type = "모든 데이터 삭제 / 부분 삭제"
+    elif status == 3:
+        del_type = "포맷"
+    elif status == 4:
+        del_type = "Slack(Unknown)"
+
     # Perform further actions as needed with the organized frame set
     #print(f"Start Time: {start_time}, Last Time: {last_time}, Channel: {channel}, Start Offset: {start_offset}, Last Offset: {last_offset}, Del Type: {del_type}")
-    print(f"Start Time: {start_time}, Last Time: {last_time}, Channel: {channel}, Del Type: {del_type}")
+    #print(f"Block : {block_cnt}, Start Time: {start_time}, Last Time: {last_time}, Channel: {channel}, Del Type: {del_type}")
     unique_frame_time_count = len(set(frame["frame_time"] for frame in frame_set))
     duration = str(timedelta(seconds=unique_frame_time_count))
 
