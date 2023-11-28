@@ -8,10 +8,31 @@ from Root_Scan import Root_Scan
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenuBar, QAction, QTreeView, QTreeWidget, QTreeWidgetItem,
                              QTableWidget, QTableWidgetItem, QLabel, QTextEdit, QVBoxLayout, QHBoxLayout,
                              QWidget, QFileDialog, QMessageBox, QGridLayout, QHeaderView, QTextBrowser, QTableView, 
-                             QCalendarWidget, QDialog, QPushButton, QInputDialog, QTimeEdit, QLineEdit, QFormLayout)
-from PyQt5.QtCore import Qt, QSortFilterProxyModel, QTime, QDateTime, QRegExp, pyqtSignal
+                             QCalendarWidget, QDialog, QPushButton, QInputDialog, QTimeEdit, QLineEdit, QFormLayout)             
+from PyQt5.QtCore import Qt, QSortFilterProxyModel, QTime, QDateTime, QRegExp, pyqtSignal, QSortFilterProxyModel
 import sqlite3
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QRegExpValidator
+
+class CustomSortFilterProxyModel(QSortFilterProxyModel):
+    def __init__(self, *args, **kwargs):
+        super(CustomSortFilterProxyModel, self).__init__(*args, **kwargs)
+        self.start_datetime = None
+        self.end_datetime = None
+    
+    def set_date_range(self, start_datetime, end_datetime):
+        self.start_datetime = start_datetime
+        self.end_datetime = end_datetime
+        self.invalidateFilter()
+
+    def filterAcceptsRow(self, source_row, source_parent):
+        if not self.start_datetime or not self.end_datetime:
+            return True
+        
+        index = self.sourceModel().index(source_row, 3, source_parent)
+        data = self.sourceModel().data(index)
+        row_datetime = QDateTime.fromString(data, 'yyyy-MM-dd HH:mm:ss')
+
+        return self.start_datetime <= row_datetime <= self.end_datetime
 
 class UI_main(QMainWindow):
     def __init__(self):  # 생성자
@@ -19,7 +40,7 @@ class UI_main(QMainWindow):
 
         # 정렬 기능 위한
         self.model = QStandardItemModel()
-        self.proxy_model = QSortFilterProxyModel()
+        self.proxy_model = CustomSortFilterProxyModel()
         self.proxy_model.setSourceModel(self.model)
         self.blocktable = QTableView()  # QTableView로 수정
         self.blocktable.setModel(self.proxy_model)
@@ -61,11 +82,20 @@ class UI_main(QMainWindow):
         treeLayout.addWidget(self.tree, 1)
         leftLayout.addLayout(treeLayout, 1)
 
-        # 오른쪽 영역 - mainLayout
-        # self.blocktable = QTableWidget() # 정렬 기능하려고 일단 기존 QTableWidget 주석 처리
-        self.model.setColumnCount(8)  # 모델에 컬럼 추가
-        self.model.setHorizontalHeaderLabels(
-            ["Index", "Block", "Channel", "Start Time", "End Time", "Start Offset", "End Offset", "Size"])
+        self.model = QStandardItemModel()  # 모델을 새로 생성합니다.
+    
+        # 'Index' 열 헤더를 설정합니다.
+        index_header_item = QStandardItem("Index")
+        index_header_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.model.setHorizontalHeaderItem(0, index_header_item)
+    
+        # 나머지 열 헤더를 설정합니다.
+        for col, label in enumerate(["Block", "Channel", "Start Time", "End Time", "Start Offset", "End Offset", "Size"], start=1):
+            header_item = QStandardItem(label)
+            header_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.model.setHorizontalHeaderItem(col, header_item)   
+        self.blocktable.setModel(self.model) # 테이블 뷰에 모델을 설정
+
         self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.blocktable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.blocktable.verticalHeader().setVisible(False)  # Hide the vertical header
@@ -284,7 +314,16 @@ class UI_main(QMainWindow):
 
 
     def filter_data_by_datetime(self, filter_start_datetime, filter_end_datetime):
-        pass
+        self.proxy_model.set_date_range(filter_start_datetime, filter_end_datetime)
+        # self.model이 데이터를 포함하고 있는 QStandardItemModel이라고 가정
+        for row in range(self.model.rowCount()):
+            row_start_time = self.model.item(row, 3).text()
+            row_start_datetime = QDateTime.fromString(row_start_time, 'yyyy-MM-dd HH:mm:ss')
+
+            if filter_start_datetime <= row_start_datetime <= filter_end_datetime:
+                self.model.item(row).setVisible(True)
+            else:
+                self.model.item(row).setVisible(False)
 
 
     # 트리에서 파일명 클릭 시
@@ -312,7 +351,7 @@ class UI_main(QMainWindow):
         self.model.removeRows(0, self.model.rowCount())  # Clear existing data
 
         for row in cursor.fetchall():
-            index = row[0]
+            index = int(row[0]) # 문자열로 하면 정렬이 안돼서 정수로 변환
             name = row[1]
             channel = row[2]
             start_time = row[3]
@@ -324,7 +363,11 @@ class UI_main(QMainWindow):
             self.model.insertRow(self.model.rowCount())  # Insert a new row
 
             for col, value in enumerate([index, name, channel, start_time, end_time, start_offset, end_offset, size]):
-                item = QStandardItem(str(value))
+                if col == 0:
+                    item = QStandardItem()
+                    item.setData(value, Qt.DisplayRole)
+                else:
+                    item = QStandardItem(str(value))
                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 self.model.setItem(self.model.rowCount() - 1, col, item)  # Set data in the last row
 
@@ -495,7 +538,6 @@ class UI_main(QMainWindow):
             print("No button clicked.")
         else:
             print("Unknown button clicked.")
-
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)  # PyQt 애플리케이션 시작위해 PyQt의 QApplication 클래스를 인스턴스화
