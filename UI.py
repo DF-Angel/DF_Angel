@@ -7,11 +7,32 @@ import textwrap
 from Root_Scan import Root_Scan
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenuBar, QAction, QTreeView, QTreeWidget, QTreeWidgetItem,
                              QTableWidget, QTableWidgetItem, QLabel, QTextEdit, QVBoxLayout, QHBoxLayout,
-                             QWidget, QFileDialog, QMessageBox, QGridLayout, QHeaderView, QTextBrowser, QTableView)
-from PyQt5.QtCore import Qt, QSortFilterProxyModel
-from PyQt5.QtCore import pyqtSignal
+                             QWidget, QFileDialog, QMessageBox, QGridLayout, QHeaderView, QTextBrowser, QTableView, 
+                             QCalendarWidget, QDialog, QPushButton, QInputDialog, QTimeEdit, QLineEdit, QFormLayout)             
+from PyQt5.QtCore import Qt, QSortFilterProxyModel, QTime, QDateTime, QRegExp, pyqtSignal, QSortFilterProxyModel
 import sqlite3
-from PyQt5.QtGui import QStandardItemModel, QStandardItem
+from PyQt5.QtGui import QStandardItemModel, QStandardItem, QRegExpValidator
+
+class CustomSortFilterProxyModel(QSortFilterProxyModel):
+    def __init__(self, *args, **kwargs):
+        super(CustomSortFilterProxyModel, self).__init__(*args, **kwargs)
+        self.start_datetime = None
+        self.end_datetime = None
+    
+    def set_date_range(self, start_datetime, end_datetime):
+        self.start_datetime = start_datetime
+        self.end_datetime = end_datetime
+        self.invalidateFilter()
+
+    def filterAcceptsRow(self, source_row, source_parent):
+        if not self.start_datetime or not self.end_datetime:
+            return True
+        
+        index = self.sourceModel().index(source_row, 3, source_parent)
+        data = self.sourceModel().data(index)
+        row_datetime = QDateTime.fromString(data, 'yyyy-MM-dd HH:mm:ss')
+
+        return self.start_datetime <= row_datetime <= self.end_datetime
 
 class UI_main(QMainWindow):
     def __init__(self):  # 생성자
@@ -19,7 +40,7 @@ class UI_main(QMainWindow):
 
         # 정렬 기능 위한
         self.model = QStandardItemModel()
-        self.proxy_model = QSortFilterProxyModel()
+        self.proxy_model = CustomSortFilterProxyModel()
         self.proxy_model.setSourceModel(self.model)
         self.blocktable = QTableView()  # QTableView로 수정
         self.blocktable.setModel(self.proxy_model)
@@ -61,11 +82,20 @@ class UI_main(QMainWindow):
         treeLayout.addWidget(self.tree, 1)
         leftLayout.addLayout(treeLayout, 1)
 
-        # 오른쪽 영역 - mainLayout
-        # self.blocktable = QTableWidget() # 정렬 기능하려고 일단 기존 QTableWidget 주석 처리
-        self.model.setColumnCount(8)  # 모델에 컬럼 추가
-        self.model.setHorizontalHeaderLabels(
-            ["Index", "Block", "Channel", "Start Time", "End Time", "Start Offset", "End Offset", "Size"])
+        self.model = QStandardItemModel()  # 모델을 새로 생성합니다.
+    
+        # 'Index' 열 헤더를 설정합니다.
+        index_header_item = QStandardItem("Index")
+        index_header_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.model.setHorizontalHeaderItem(0, index_header_item)
+    
+        # 나머지 열 헤더를 설정합니다.
+        for col, label in enumerate(["Block", "Channel", "Start Time", "End Time", "Start Offset", "End Offset", "Size"], start=1):
+            header_item = QStandardItem(label)
+            header_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.model.setHorizontalHeaderItem(col, header_item)   
+        self.blocktable.setModel(self.model) # 테이블 뷰에 모델을 설정
+
         self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.blocktable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.blocktable.verticalHeader().setVisible(False)  # Hide the vertical header
@@ -144,6 +174,9 @@ class UI_main(QMainWindow):
 
         # Analysis
         analysisMenu = menubar.addMenu('Analysis')
+        filterAction = QAction('Filter', self) #필터 기능 추가
+        filterAction.triggered.connect(self.open_calendar_to_filter)
+        analysisMenu.addAction(filterAction)
 
         # Help
         helpMenu = menubar.addMenu('Help')
@@ -189,6 +222,112 @@ class UI_main(QMainWindow):
         except Exception as e:
             print(f"An error occurred in open_image: {e}")
 
+    def open_calendar_to_filter(self): #필터링 하고 싶은 날짜 입력받기
+        self.calendar_dialog = QDialog(self)
+        self.calendar_dialog.setWindowTitle('Select Date Range')
+
+        layout = QVBoxLayout(self.calendar_dialog)
+
+        self.calendar = QCalendarWidget(self.calendar_dialog)
+        self.calendar.setGridVisible(True)
+        layout.addWidget(self.calendar)
+
+        self.next_button = QPushButton('Next', self.calendar_dialog)
+        layout.addWidget(self.next_button)
+
+        self.next_button.clicked.connect(self.get_time_range)
+
+        self.calendar_dialog.exec_()
+
+    def get_time_range(self): #필터링 하고 싶은 시간대 입력받기
+        self.calendar_dialog.accept() #캘린더 닫기
+
+        self.time_range_dialog = QDialog(self)
+        self.time_range_dialog.setWindowTitle('Enter Time Range')
+
+        form_layout = QFormLayout(self.time_range_dialog)
+
+        # 정규 표현식으로 시간, 분, 초의 범위를 제한합니다
+        hour_regexp = QRegExp("([01]?[0-9]|2[0-3])")
+        min_sec_regexp = QRegExp("[0-5]?[0-9]")
+
+        # QLineEdit 위젯 생성 및 범위 제한을 위한 Validator 설정
+        self.start_time_h_edit = QLineEdit()
+        self.start_time_h_edit.setValidator(QRegExpValidator(hour_regexp))
+        self.start_time_m_edit = QLineEdit()
+        self.start_time_m_edit.setValidator(QRegExpValidator(min_sec_regexp))
+        self.start_time_s_edit = QLineEdit()
+        self.start_time_s_edit.setValidator(QRegExpValidator(min_sec_regexp))
+
+        self.end_time_h_edit = QLineEdit()
+        self.end_time_h_edit.setValidator(QRegExpValidator(hour_regexp))
+        self.end_time_m_edit = QLineEdit()
+        self.end_time_m_edit.setValidator(QRegExpValidator(min_sec_regexp))
+        self.end_time_s_edit = QLineEdit()
+        self.end_time_s_edit.setValidator(QRegExpValidator(min_sec_regexp))
+
+        # 시간 입력을 위한 QHBoxLayout 생성
+        start_time_layout = QHBoxLayout()
+        start_time_layout.addWidget(self.start_time_h_edit)
+        start_time_layout.addWidget(QLabel(":"))
+        start_time_layout.addWidget(self.start_time_m_edit)
+        start_time_layout.addWidget(QLabel(":"))
+        start_time_layout.addWidget(self.start_time_s_edit)
+
+        end_time_layout = QHBoxLayout()
+        end_time_layout.addWidget(self.end_time_h_edit)
+        end_time_layout.addWidget(QLabel(":"))
+        end_time_layout.addWidget(self.end_time_m_edit)
+        end_time_layout.addWidget(QLabel(":"))
+        end_time_layout.addWidget(self.end_time_s_edit)
+
+        # form_layout에 시간 입력 QHBoxLayout 추가
+        form_layout.addRow('Start Time (HH:MM:SS):', start_time_layout)
+        form_layout.addRow('End Time (HH:MM:SS):', end_time_layout)
+
+        # 사용자가 시간 범위를 제출할 수 있는 버튼 생성
+        submit_button = QPushButton('Submit', self.time_range_dialog)
+        submit_button.clicked.connect(self.submit_time_range)
+        form_layout.addWidget(submit_button)
+
+        self.time_range_dialog.setLayout(form_layout)
+        self.time_range_dialog.exec_()
+
+    def submit_time_range(self):
+        # QLineEdit 위젯에서 텍스트를 가져와서 시간 문자열을 만듭니다
+        start_time = f"{self.start_time_h_edit.text()}:{self.start_time_m_edit.text()}:{self.start_time_s_edit.text()}"
+        end_time = f"{self.end_time_h_edit.text()}:{self.end_time_m_edit.text()}:{self.end_time_s_edit.text()}"
+
+        # 선택된 날짜와 시간 문자열로 QDateTime 객체를 만듭니다
+        selected_date = self.calendar.selectedDate()
+        filter_start_datetime = QDateTime(selected_date, QTime.fromString(start_time, 'HH:mm:ss'))
+        filter_end_datetime = QDateTime(selected_date, QTime.fromString(end_time, 'HH:mm:ss'))
+
+        # 생성된 QDateTime 객체의 유효성을 검사하고 필터링을 수행
+        if filter_start_datetime.isValid() and filter_end_datetime.isValid():
+            db_filepath = './IDIS_FS_sqlite.db'
+            # 필터링된 데이터를 처리
+            self.process_file(db_filepath, filter_start_datetime, filter_end_datetime)
+            self.time_range_dialog.accept()
+        else:
+            # 유효하지 않은 입력에 대한 처리
+            # 여기에 에러 메시지를 표시하거나 사용자에게 다시 입력하도록 요청 가능
+            pass
+
+
+    def filter_data_by_datetime(self, filter_start_datetime, filter_end_datetime):
+        self.proxy_model.set_date_range(filter_start_datetime, filter_end_datetime)
+        # self.model이 데이터를 포함하고 있는 QStandardItemModel이라고 가정
+        for row in range(self.model.rowCount()):
+            row_start_time = self.model.item(row, 3).text()
+            row_start_datetime = QDateTime.fromString(row_start_time, 'yyyy-MM-dd HH:mm:ss')
+
+            if filter_start_datetime <= row_start_datetime <= filter_end_datetime:
+                self.model.item(row).setVisible(True)
+            else:
+                self.model.item(row).setVisible(False)
+
+
     # 트리에서 파일명 클릭 시
     def Root_Scan(self, filepath):
         print("again Root_Scan")
@@ -202,35 +341,38 @@ class UI_main(QMainWindow):
         db_filepath = './IDIS_FS_sqlite.db'
         self.process_file(db_filepath)  # 파일 처리 메서드 호출
 
-    def process_file(self, db_filepath):
+    def process_file(self, db_filepath, filter_start_datetime=None, filter_end_datetime=None):
         # SQLite DB와 연결 생성
         connection = sqlite3.connect(db_filepath)
         cursor = connection.cursor()
 
-        # ROOTSCAN 테이블에 쿼리 실행 및 결과 받기
         query = "SELECT * FROM ROOT_SCAN"
         cursor.execute(query)
+        rows = cursor.fetchall()
 
-        self.model.removeRows(0, self.model.rowCount())  # Clear existing data
+        self.model.removeRows(0, self.model.rowCount())  # 기존 데이터 제거
 
-        for row in cursor.fetchall():
-            index = row[0]
-            name = row[1]
-            channel = row[2]
-            start_time = row[3]
-            end_time = row[4]
-            start_offset = row[5]
-            end_offset = row[6]
-            size = row[7]
+        for row in rows:
+            row_start_time = QDateTime.fromString(row[3], 'yyyy-MM-dd HH:mm:ss')
 
-            self.model.insertRow(self.model.rowCount())  # Insert a new row
+            # 필터링 조건을 확인하여 데이터를 모델에 추가
+            if not filter_start_datetime or not filter_end_datetime or (filter_start_datetime <= row_start_time <= filter_end_datetime):
+                index = int(row[0])  # 문자열로 하면 정렬이 안돼서 정수로 변환
+                name = row[1]
+                channel = row[2]
+                start_time = row[3]
+                end_time = row[4]
+                start_offset = row[5]
+                end_offset = row[6]
+                size = row[7]
 
-            for col, value in enumerate([index, name, channel, start_time, end_time, start_offset, end_offset, size]):
-                item = QStandardItem(str(value))
-                item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-                self.model.setItem(self.model.rowCount() - 1, col, item)  # Set data in the last row
+                self.model.insertRow(self.model.rowCount())  # 새로운 행 삽입
 
-        # Close the database connection
+                for col, value in enumerate(row):
+                    item = QStandardItem(str(value))
+                    item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
+                    self.model.setItem(self.model.rowCount() - 1, col, item)
+
         connection.close()
 
     def update_preview(self, image_path):
@@ -397,7 +539,6 @@ class UI_main(QMainWindow):
             print("No button clicked.")
         else:
             print("Unknown button clicked.")
-
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)  # PyQt 애플리케이션 시작위해 PyQt의 QApplication 클래스를 인스턴스화
