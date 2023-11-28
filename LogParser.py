@@ -1,6 +1,6 @@
 import pandas as pd
 from sqlite_db import insert_data_log
-
+import re
 
 class LogParse:
     def __init__(self, file_path):
@@ -42,8 +42,7 @@ class LogParse:
             else:
                 DATETIME_start = line.find("|", no_end + 1)
                 DATETIME_end = line.find("|", DATETIME_start + 1)
-                DATETIME = line[
-                           DATETIME_start + 1:DATETIME_end].strip() if DATETIME_start != -1 and DATETIME_end != -1 else None
+                DATETIME = line[DATETIME_start + 1:DATETIME_end].strip() if DATETIME_start != -1 and DATETIME_end != -1 else None
                 DATETIME = self.convert_datetime(DATETIME)
 
             # 추출한 값들을 딕셔너리로 저장
@@ -63,6 +62,9 @@ class LogParse:
                     else:
                         break
 
+                # Remove the dynamic pattern from the merged_event
+                merged_event = self.clean_event(merged_event)
+
                 current_row['EVENT'] = merged_event
                 merged_data.append(current_row)
             elif current_row['NUMBER'] is not None:
@@ -75,6 +77,13 @@ class LogParse:
                 insert_data_log(row['EVENT'], row['DATETIME'])
 
         print(data)
+
+    def clean_event(self, event_str):
+        # Remove the dynamic pattern from the event string
+        pattern_to_remove = r'-.*?-'
+        cleaned_event = re.sub(pattern_to_remove, '-', event_str)
+
+        return cleaned_event
 
     def convert_datetime(self, datetime_str):
         # 날짜 및 시간 형식 변환

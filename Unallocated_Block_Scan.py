@@ -59,7 +59,7 @@ class Unallocated_Block_Scan:
                 frame_type = frame_meta[0x1A]
                 frame_offset = int.from_bytes(frame_meta[0x1C:0x20], byteorder='little')
             print("Block : " + str(block_cnt) + ", ", end='')
-            self.process_frame_set(frame_set, status, block_cnt)
+            process_frame_set(frame_set, status, block_cnt, 1)
             status = 0
             frame_set = []
             #file.seek(-32, 1)
@@ -94,7 +94,7 @@ class Unallocated_Block_Scan:
                     if int.from_bytes(frame_meta[:32]) == 0x00:
                         block_end = 1
                         print("Block : " + str(block_cnt) + ", ", end='')
-                        self.process_frame_set(frame_set, status, block_cnt)
+                        process_frame_set(frame_set, status, block_cnt, 1)
                     #    block_end = 1
                         return
                     frame_time = convert_to_datetime(int.from_bytes(frame_meta[0x04:0x08], byteorder='little'))
@@ -103,7 +103,7 @@ class Unallocated_Block_Scan:
                     frame_type = frame_meta[0x1A]
                     frame_offset = int.from_bytes(frame_meta[0x1C:0x20], byteorder='little')
                 print("Block : " + str(block_cnt) + ", ", end='')
-                self.process_frame_set(frame_set, status, block_cnt)
+                process_frame_set(frame_set, status, block_cnt, 1)
 
                 if not(start_frame_time <= frame_time <= block_end_time):
                     frame_set = [
@@ -146,7 +146,7 @@ class Unallocated_Block_Scan:
 
             if frame_size == 0:
                 print("Block : " + str(block_cnt) + ", ", end='')
-                self.process_frame_set(frame_set, status, block_cnt)
+                process_frame_set(frame_set, status, block_cnt, 1)
                 status = 1
                 frame_set = []
                 while frame_size == 0:
@@ -164,7 +164,7 @@ class Unallocated_Block_Scan:
                     frame_meta = file.read(32)
                     if int.from_bytes(frame_meta) == 0x00:
                         print("Block : " + str(block_cnt) + ", ", end='')
-                        self.process_frame_set(frame_set, status, block_cnt)
+                        process_frame_set(frame_set, status, block_cnt, 1)
                         return
                     frame_time = convert_to_datetime(int.from_bytes(frame_meta[0x04:0x08], byteorder='little'))
                     frame_size = int.from_bytes(frame_meta[0x10:0x14], byteorder='little')
@@ -175,7 +175,7 @@ class Unallocated_Block_Scan:
                         allocated_block_end = 0
                         break
                 print("Block : " + str(block_cnt) + ", ", end='')
-                self.process_frame_set(frame_set, status, block_cnt)
+                process_frame_set(frame_set, status, block_cnt, 1)
                 status = 0
                 if not(start_frame_time <= frame_time <= block_end_time):
                     frame_set = [
@@ -208,7 +208,7 @@ class Unallocated_Block_Scan:
             frame_meta = file.read(32)
             if int.from_bytes(frame_meta[:32]) == 0x00:
                 print("Block : " + str(block_cnt) + ", ", end='')
-                self.process_frame_set(frame_set, status, block_cnt)
+                process_frame_set(frame_set, status, block_cnt, 1)
                 status = 0
                 return
             frame_time = convert_to_datetime(int.from_bytes(frame_meta[0x04:0x08], byteorder='little'))
@@ -229,7 +229,7 @@ class Unallocated_Block_Scan:
                 frame_meta = file.read(32)
                 if int.from_bytes(frame_meta[:32]) == 0x00:
                     print("Block : " + str(block_cnt) + ", ", end='')
-                    self.process_frame_set(frame_set, status, block_cnt)
+                    process_frame_set(frame_set, status, block_cnt, 1)
                     status = 0
                     block_end = 1
                     return
@@ -239,7 +239,7 @@ class Unallocated_Block_Scan:
                 frame_type = frame_meta[0x1A]
                 frame_offset = int.from_bytes(frame_meta[0x1C:0x20], byteorder='little')
             print("Block : " + str(block_cnt) + ", ", end='')
-            self.process_frame_set(frame_set, status, block_cnt)
+            process_frame_set(frame_set, status, block_cnt, 1)
             file.seek(-32, 1)
         self.slack(block_cnt, start_frame_time, frame_set[-1]["frame_time"], frame_set[-1]["frame_offset"], file)
 
@@ -262,7 +262,7 @@ class Unallocated_Block_Scan:
             while True:
                 frame_meta = file.read(32)
                 if int.from_bytes(frame_meta) == 0x00:
-                    self.process_frame_set(frame_set, status, block_cnt)
+                    process_frame_set(frame_set, status, block_cnt, 1)
                     break
                 frame_time = convert_to_datetime(int.from_bytes(frame_meta[0x04:0x08], byteorder='little'))
                 frame_size = int.from_bytes(frame_meta[0x10:0x14], byteorder='little')
@@ -270,7 +270,7 @@ class Unallocated_Block_Scan:
                 frame_type = frame_meta[0x1A]
                 frame_offset = int.from_bytes(frame_meta[0x1C:0x20], byteorder='little')
                 if bef_frame_time > frame_time:
-                        self.process_frame_set(frame_set, status, block_cnt)
+                        self.process_frame_set(frame_set, status, block_cnt, 1)
                         file.seek(-32)
                         self.slack(block_cnt, start_frame_time, bef_frame_time, bef_frame_offset, file)
                 else:
@@ -321,7 +321,7 @@ class Unallocated_Block_Scan:
             frame_meta = file.read(32)
             if int.from_bytes(frame_meta) == 0x00:
                 print("Block : " + str(block_cnt) + ", ", end='')
-                self.process_frame_set(frame_set, status, block_cnt)
+                process_frame_set(frame_set, status, block_cnt, 1)
                 return
             frame_time = convert_to_datetime(int.from_bytes(frame_meta[0x04:0x08], byteorder='little'))
             frame_size = int.from_bytes(frame_meta[0x10:0x14], byteorder='little')
@@ -330,7 +330,7 @@ class Unallocated_Block_Scan:
             frame_offset = int.from_bytes(frame_meta[0x1C:0x20], byteorder='little')
             if bef_frame_time > frame_time:
                 print("Block : " + str(block_cnt) + ", ", end='')
-                self.process_frame_set(frame_set, status, block_cnt)
+                process_frame_set(frame_set, status, block_cnt, 1)
                 file.seek(-32, 1)
                 self.slack(block_cnt, start_frame_time, bef_frame_time, bef_frame_offset, file)
                 break
@@ -348,59 +348,3 @@ class Unallocated_Block_Scan:
                 )
 
 
-    def process_frame_set(self, frame_set, status, block_cnt):
-        # Process and organize the complete set of frames
-        start_time = frame_set[0]["frame_time"]
-        last_time = frame_set[-1]["frame_time"]
-        channel = frame_set[0]["frame_channel"]
-        start_offset = hex(frame_set[0]["frame_offset"])
-        last_offset = hex(frame_set[-1]["frame_offset"])
-        del_type = ''
-        if self.all_del_condition:
-            if status == 0:
-                del_type = "모.데.삭, 부분 삭제"
-            elif status == 1:
-                del_type = "부분 삭제(시작) -> 모.데.삭, 부분 삭제"
-            elif status == 2:
-                del_type = "부분 삭제(중간) -> 모.데.삭, 부분 삭제"
-            elif status == 3:
-                del_type = "부분 삭제(끝) -> 모.데.삭, 부분 삭제"
-            elif status == 4:
-                del_type = "포맷"
-            elif status == 5:
-                del_type = "Unknown(Slack)"
-        else:
-            if status == 0:
-                del_type = "부분 삭제"
-            elif status == 1:
-                del_type = "부분 삭제(시작) -> 부분 삭제"
-            elif status == 2:
-                del_type = "부분 삭제(중간) -> 부분 삭제"
-            elif status == 3:
-                del_type = "부분 삭제(끝) -> 부분 삭제"
-            elif status == 4:
-                del_type = "포맷"
-            elif status == 5:
-                del_type = "Unknown(Slack)"
-
-        unique_frame_time_count = len(set(frame["frame_time"] for frame in frame_set))
-        duration = str(timedelta(seconds=unique_frame_time_count))
-
-        i_frame_cnt = 0
-        p_frame_cnt = 0
-        size = 0
-        for frame in frame_set:
-            if frame["frame_type"] == 0:
-                i_frame_cnt += 1
-            elif frame["frame_type"] == 1:
-                p_frame_cnt += 1
-            size += frame["frame_size"] - 0x23
-
-        # Perform further actions as needed with the organized frame set
-        #print(f"Start Time: {start_time}, Last Time: {last_time}, Channel: {channel}, Start Offset: {start_offset}, Last Offset: {last_offset}, Del Type: {del_type}")
-        print(f"Start Time: {start_time}, Last Time: {last_time}, Channel: {channel}, Del Type: {del_type}")
-        insert_data_precise_scan(str(frame_set[0]["frame_time"]) + " ~ " + str(frame_set[-1]["frame_time"]), block_cnt,
-                                 frame_set[0]["frame_channel"], str(frame_set[0]["frame_time"]),
-                                 str(frame_set[-1]["frame_time"]), duration, frame_set[0]["frame_offset"],
-                                 frame_set[-1]["frame_offset"] + frame_set[-1]["frame_size"] + 0xA0, size, status, i_frame_cnt,
-                                 p_frame_cnt, 1)
