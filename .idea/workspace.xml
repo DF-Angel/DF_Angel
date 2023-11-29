@@ -4,7 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="285d2019-3f97-4687-ba6c-904c09182845" name="Changes" comment="여기에 수정한 내용 관련 메시지 맘대로 쓰면 돼">
+    <list default="true" id="285d2019-3f97-4687-ba6c-904c09182845" name="Changes" comment="UI - Precise Scan">
+      <change afterPath="$PROJECT_DIR$/UI2.py" afterDir="false" />
       <change afterPath="$PROJECT_DIR$/UI_list.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/UI.py" beforeDir="false" afterPath="$PROJECT_DIR$/UI.py" afterDir="false" />
@@ -142,7 +143,15 @@
       <option name="project" value="LOCAL" />
       <updated>1701089880850</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="UI - Precise Scan">
+      <option name="closed" value="true" />
+      <created>1701178621860</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1701178621860</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -174,6 +183,7 @@
     <MESSAGE value="Root_Scan" />
     <MESSAGE value="UI 수정 - Tree, Precise Scan" />
     <MESSAGE value="UI 수정 - Root_Scan, 정렬" />
-    <option name="LAST_COMMIT_MESSAGE" value="UI 수정 - Root_Scan, 정렬" />
+    <MESSAGE value="UI - Precise Scan" />
+    <option name="LAST_COMMIT_MESSAGE" value="UI - Precise Scan" />
   </component>
 </project>
