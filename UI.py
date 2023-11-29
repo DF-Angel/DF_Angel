@@ -45,6 +45,7 @@ class UI_main(QMainWindow):
         self.proxy_model.setSourceModel(self.model)
         self.blocktable = QTableView()  # QTableView로 수정
         self.blocktable.setModel(self.proxy_model)
+        # self.blocktable.setSortingEnabled(True) # 체크박스 위해 추가했으나 없어도 정상동작
 
         self.files = {}  # 파일 경로와 트리 항목(ID)을 저장하는 딕셔너리
         self.filename = ""  # 파일 이름을 담을 전역 변수
@@ -337,9 +338,9 @@ class UI_main(QMainWindow):
     def update_root_scan(self, filepath):
         print("again Root_Scan")
 
-        self.model.setColumnCount(8)  # 모델에 있는 컬럼 수 설정
+        self.model.setColumnCount(9)  # 모델에 있는 컬럼 수 설정
         self.model.setHorizontalHeaderLabels(
-            ["Index", "Block", "Channel", "Start Time", "End Time", "Start Offset", "End Offset", "Size"])
+            ["Check", "Index", "Block", "Channel", "Start Time", "End Time", "Start Offset", "End Offset", "Size"])
         self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.blocktable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
 
@@ -394,11 +395,18 @@ class UI_main(QMainWindow):
                 size = row[7]
 
                 self.model.insertRow(self.model.rowCount())  # 새로운 행 삽입
+                checkbox_item = QStandardItem() # 체크박스 아이템 생성
+                checkbox_item.setCheckable(True) # 체크 가능하도록 설정
+                self.model.setItem(self.model.rowCount() - 1, 0, checkbox_item) # 체크박스를 첫 번째 열에 추가
 
                 for col, value in enumerate(row):
-                    item = QStandardItem(str(value))
+                    if col == 0:
+                        item = QStandardItem()
+                        item.setData(int(value), Qt.DisplayRole)
+                    else:
+                        item = QStandardItem(str(value))
                     item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
-                    self.model.setItem(self.model.rowCount() - 1, col, item)
+                    self.model.setItem(self.model.rowCount() - 1, col + 1, item) # 체크박스 추가 위해 col + 1
 
         connection.close()
 
