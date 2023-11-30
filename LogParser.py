@@ -133,4 +133,3 @@ class LogParse:
                 EVENT = EVENT.replace('  ', ' ')
 
         return EVENT
-
