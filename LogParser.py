@@ -2,6 +2,7 @@ import pandas as pd
 from sqlite_db import insert_data_log
 import re
 
+
 class LogParse:
     def __init__(self, file_path):
         self.file_path = file_path
@@ -32,6 +33,7 @@ class LogParse:
             # 종류 추출
             if len(values) >= 3:
                 EVENT = values[2]
+                EVENT = self.convert_EVENT_TIME(EVENT)
             else:
                 EVENT = None
 
@@ -42,7 +44,8 @@ class LogParse:
             else:
                 DATETIME_start = line.find("|", no_end + 1)
                 DATETIME_end = line.find("|", DATETIME_start + 1)
-                DATETIME = line[DATETIME_start + 1:DATETIME_end].strip() if DATETIME_start != -1 and DATETIME_end != -1 else None
+                DATETIME = line[
+                           DATETIME_start + 1:DATETIME_end].strip() if DATETIME_start != -1 and DATETIME_end != -1 else None
                 DATETIME = self.convert_datetime(DATETIME)
 
             # 추출한 값들을 딕셔너리로 저장
@@ -62,7 +65,6 @@ class LogParse:
                     else:
                         break
 
-                # Remove the dynamic pattern from the merged_event
                 merged_event = self.clean_event(merged_event)
 
                 current_row['EVENT'] = merged_event
@@ -79,7 +81,6 @@ class LogParse:
         print(data)
 
     def clean_event(self, event_str):
-        # Remove the dynamic pattern from the event string
         pattern_to_remove = r'-.*?-'
         cleaned_event = re.sub(pattern_to_remove, '-', event_str)
 
@@ -88,23 +89,47 @@ class LogParse:
     def convert_datetime(self, datetime_str):
         # 날짜 및 시간 형식 변환
         if datetime_str and ('오후' in datetime_str or '오전' in datetime_str):
-            datetime_str = datetime_str.replace('오후', '').replace('오전', '')
 
-            # 시간 부분 추출
-            time_parts = datetime_str.split()
-            time_part = time_parts[1] if len(time_parts) > 1 else ''
+            if '오후' in datetime_str:
+                hours_match = re.search(r'오후 (\d+):', datetime_str)
+                hours_str = hours_match.group(1) if hours_match else None
+                hours = int(hours_str) if hours_str else 0
+                hours += 12  # 오후인 경우 12를 더해줌
 
-            # 24시간 형식으로 시간 변환
-            if '오후' in datetime_str and '12' not in time_part:
-                hours, minutes, seconds = map(int, time_part.split(':'))
-                hours += 12
-                datetime_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-            elif '오전' in datetime_str and '12' in time_part:
-                hours, minutes, seconds = map(int, time_part.split(':'))
-                hours -= 12
-                datetime_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+                datetime_str = re.sub(r'오후 \d+:', f'{hours:02d}:', datetime_str)
+                datetime_str = datetime_str.replace('  ', ' ')
 
-            datetime_str = datetime_str.replace(' ', '')
-            datetime_str = datetime_str[:10] + ' ' + datetime_str[10:]
+            elif '오전' in datetime_str:
+                hours_match = re.search(r'오전 (\d+):', datetime_str)
+                hours_str = hours_match.group(1) if hours_match else None
+                hours = int(hours_str) if hours_str else 0
+                hours += 0  # 오후인 경우 12를 더해줌
+
+                datetime_str = re.sub(r'오전 \d+:', f'{hours:02d}:', datetime_str)
+                datetime_str = datetime_str.replace('  ', ' ')
 
         return datetime_str
+
+    def convert_EVENT_TIME(self, EVENT):
+
+        if EVENT and ('오후' in EVENT or '오전' in EVENT):
+
+            if '오후' in EVENT:
+                hours_match = re.search(r'오후 (\d+):', EVENT)
+                hours_str = hours_match.group(1) if hours_match else None
+                hours = int(hours_str) if hours_str else 0
+                hours += 12  # 오후인 경우 12를 더해줌
+
+                EVENT = re.sub(r'오후 \d+:', f'{hours:02d}:', EVENT)
+                EVENT = EVENT.replace('  ', ' ')
+
+            elif '오전' in EVENT:
+                hours_match = re.search(r'오전 (\d+):', EVENT)
+                hours_str = hours_match.group(1) if hours_match else None
+                hours = int(hours_str) if hours_str else 0
+                hours += 0
+
+                EVENT = re.sub(r'오전 \d+:', f'{hours:02d}:', EVENT)
+                EVENT = EVENT.replace('  ', ' ')
+
+        return EVENT
