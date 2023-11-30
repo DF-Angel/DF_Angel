@@ -117,32 +117,7 @@ class Allocated_Block_Scan:
                     bef_frame_time = frame_time
                     bef_frame_offset = frame_offset
                 break
-                #while int.from_bytes(frame_meta[:32]) != 0x00 and block_start_time <= frame_time <= block_end_time:
-                #    frame_meta = file.read(32)
-                #    if int.from_bytes(frame_meta[:32]) == 0x00:
-                #        #self.process_frame_set(frame_set)
-                #        block_end = 1
-                #        break
-                    #print(frame_meta)
-                #    frame_time = convert_to_datetime(int.from_bytes(frame_meta[0x04:0x08], byteorder='little'))
-                #    frame_size = int.from_bytes(frame_meta[0x10:0x14], byteorder='little')
-                #    frame_channel = frame_meta[0x18]
-                #    frame_type = frame_meta[0x1A]
-                #    frame_offset = int.from_bytes(frame_meta[0x1C:0x20], byteorder='little')
-                #if int.from_bytes(frame_meta[:32]) == 0x00:
-                #    block_end = 1
-                #    break
-                #else:
-                #    frame_set = [
-                #        {
-                #            "frame_time": frame_time,
-                #            "frame_size": frame_size,
-                #            "frame_channel": frame_channel,
-                #            "frame_type": frame_type,
-                #            "frame_offset": frame_offset,
-                #        }
-                #    ]
-                #    break
+
 
             if frame_size == 0:
                 #print("Block : " + str(block_cnt) + ", ", end='')
@@ -174,6 +149,7 @@ class Allocated_Block_Scan:
                     if frame_set[-1]["frame_time"] > frame_time:
                         allocated_block_end = 0
                         break
+                    frame_set[-1]["frame_size"] = frame_offset - frame_set[-1]["frame_offset"] - 0xC4
                 #print("Block : " + str(block_cnt) + ", ", end='')
                 process_frame_set(frame_set, status, block_cnt, 0)
                 status = 0
