@@ -5,6 +5,7 @@ import datetime
 import textwrap
 
 from Root_Scan import Root_Scan
+from Scan import Scan
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenuBar, QAction, QTreeView, QTreeWidget, QTreeWidgetItem,
                              QTableWidget, QTableWidgetItem, QLabel, QTextEdit, QVBoxLayout, QHBoxLayout,
                              QWidget, QFileDialog, QMessageBox, QGridLayout, QHeaderView, QTextBrowser, QTableView, 
@@ -44,6 +45,7 @@ class UI_main(QMainWindow):
         self.proxy_model.setSourceModel(self.model)
         self.blocktable = QTableView()  # QTableView로 수정
         self.blocktable.setModel(self.proxy_model)
+        self.blocktable.setSortingEnabled(True) # 체크박스 위해 추가했으나 없어도 정상동작
 
         self.files = {}  # 파일 경로와 트리 항목(ID)을 저장하는 딕셔너리
         self.filename = ""  # 파일 이름을 담을 전역 변수
@@ -166,7 +168,7 @@ class UI_main(QMainWindow):
         # File
         fileMenu = menubar.addMenu('File')
         loadAction = QAction('Load Image', self)
-        loadAction.triggered.connect(self.open_image)  # Load Image 액션의 트리거 시그널이 발생 시 self.open_image 메서드 호출
+        loadAction.triggered.connect(self.open_image)  # Load Image 액션의 트리거 시그널 발생 시 self.open_image 메서드 호출
         fileMenu.addAction(loadAction)  # "File" 메뉴에 방금 생성한 "Load Image" 액션을 추가
 
         # Search
@@ -190,13 +192,15 @@ class UI_main(QMainWindow):
 
             self.filename = filepath.split("/")[-1]  # 경로에서 파일 이름만 추출해 전역변수 저장
 
-            df = Root_Scan(filepath)  # Root_Scan()에 경로 넘기고 객체로 받기
+            # 경로 넘기고 객체로 받기
+            rs = Root_Scan(filepath)
 
-            if df.check_G2FDb() == 0:  # 파일이 정상적으로 열렸는지 확인
+            if rs.check_file_validation() == 0:  # 파일이 정상적으로 열렸는지 확인
                 print("Invalid G2FDb image file. Exiting.")
                 sys.exit()  # 프로그램 종료
 
-            df.analyzer()  # Root_Scan 클래스의 analyzer 메소드 호출해 파일 분석, db 생성
+            # analyzer 메소드 호출해 파일 분석, db 생성
+            rs.analyzer()
 
             if filepath:
                 item = QTreeWidgetItem(self.tree)  # 새로운 트리 항목(item) 생성
@@ -214,13 +218,67 @@ class UI_main(QMainWindow):
                     self.display_ascii(formatted_hex_lines)
 
             db_filepath = './IDIS_FS_sqlite.db'
-            self.process_file(db_filepath)  # 파일 처리 메서드 호출
-            self.show_warning_message(filepath)
 
-            self.Root_Scan(filepath)
+            self.update_root_scan(filepath)
+            self.show_warning_message(filepath)
 
         except Exception as e:
             print(f"An error occurred in open_image: {e}")
+
+    def update_root_scan(self, filepath):
+        print("again Root_Scan")
+
+        self.model.setColumnCount(9)  # 모델에 있는 컬럼 수 설정
+        self.model.setHorizontalHeaderLabels(
+            ["Check", "Index", "Block", "Channel", "Start Time", "End Time", "Start Offset", "End Offset", "Size"])
+        self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.blocktable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+
+        db_filepath = './IDIS_FS_sqlite.db'
+        self.process_root_scan(db_filepath)  # db 접근 메소드
+
+    def process_root_scan(self, db_filepath, filter_start_datetime=None, filter_end_datetime=None):
+        # SQLite DB와 연결 생성
+        connection = sqlite3.connect(db_filepath)
+        cursor = connection.cursor()
+
+        # ROOT_SCAN 테이블 데이터 검색
+        query = "SELECT * FROM ROOT_SCAN"
+        cursor.execute(query)
+        rows = cursor.fetchall() # 각 행이 rows 리스트에 저장됨
+
+        # 기존 데이터 제거
+        self.model.removeRows(0, self.model.rowCount())
+
+        for row in rows:
+            row_start_time = QDateTime.fromString(row[3], 'yyyy-MM-dd HH:mm:ss')
+
+            # 필터링 조건을 확인하여 데이터를 모델에 추가
+            if not filter_start_datetime or not filter_end_datetime or (filter_start_datetime <= row_start_time <= filter_end_datetime):
+                index = row[0]
+                name = row[1]
+                channel = row[2]
+                start_time = row[3]
+                end_time = row[4]
+                start_offset = row[5]
+                end_offset = row[6]
+                size = row[7]
+
+                self.model.insertRow(self.model.rowCount())  # 새로운 행 삽입
+                checkbox_item = QStandardItem() # 체크박스 아이템 생성
+                checkbox_item.setCheckable(True) # 체크 가능하도록 설정
+                self.model.setItem(self.model.rowCount() - 1, 0, checkbox_item) # 체크박스를 첫 번째 열에 추가
+
+                for col, value in enumerate(row):
+                    item = QStandardItem()  # 항상 문자열이 들어가야
+                    if col == 0 or col == 1: # index와 name에 대한 값들은 int로 설정
+                        item.setData(int(value), Qt.DisplayRole) # Qt.DisplayRole: 모델 데이터를 표시할 때 사용
+                    else:
+                        item.setData(value, Qt.DisplayRole)
+                    item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
+                    self.model.setItem(self.model.rowCount() - 1, col + 1, item) # 체크박스 추가 위해 col + 1
+
+        connection.close()
 
     def open_calendar_to_filter(self): #필터링 하고 싶은 날짜 입력받기
         self.calendar_dialog = QDialog(self)
@@ -307,13 +365,12 @@ class UI_main(QMainWindow):
         if filter_start_datetime.isValid() and filter_end_datetime.isValid():
             db_filepath = './IDIS_FS_sqlite.db'
             # 필터링된 데이터를 처리
-            self.process_file(db_filepath, filter_start_datetime, filter_end_datetime)
+            self.process_root_scan(db_filepath, filter_start_datetime, filter_end_datetime)
             self.time_range_dialog.accept()
         else:
             # 유효하지 않은 입력에 대한 처리
             # 여기에 에러 메시지를 표시하거나 사용자에게 다시 입력하도록 요청 가능
             pass
-
 
     def filter_data_by_datetime(self, filter_start_datetime, filter_end_datetime):
         self.proxy_model.set_date_range(filter_start_datetime, filter_end_datetime)
@@ -327,109 +384,108 @@ class UI_main(QMainWindow):
             else:
                 self.model.item(row).setVisible(False)
 
+    def update_precise_scan(self):
+        print("update_precise scan")
 
-    # 트리에서 파일명 클릭 시
-    def Root_Scan(self, filepath):
-        print("again Root_Scan")
-
-        self.model.setColumnCount(8)  # 모델에 있는 컬럼 수 설정
+        self.model.clear()
+        self.model.setColumnCount(15)  # 모델에 있는 컬럼 수 설정
         self.model.setHorizontalHeaderLabels(
-            ["Index", "Block", "Channel", "Start Time", "End Time", "Start Offset", "End Offset", "Size"])
+            ["Check", "Index", "Name", "Block", "Channel", "Start Time", "End Time", "Duration", "Start Offset",
+             "End Offset", "Size", "Del Type", "I-Frame", "P-Frame", "삭제 여부"])
         self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.blocktable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
 
         db_filepath = './IDIS_FS_sqlite.db'
-        self.process_file(db_filepath)  # 파일 처리 메서드 호출
+        self.process_precise_scan(db_filepath) # db 접근 메소드
 
-    def process_file(self, db_filepath, filter_start_datetime=None, filter_end_datetime=None):
+    def process_precise_scan(self, db_filepath, filter_start_datetime=None, filter_end_datetime=None):
         # SQLite DB와 연결 생성
         connection = sqlite3.connect(db_filepath)
         cursor = connection.cursor()
 
-        query = "SELECT * FROM ROOT_SCAN"
+        # PRECISE_SCAN 테이블 데이터 검색
+        query = "SELECT * FROM PRECISE_SCAN"
         cursor.execute(query)
-        rows = cursor.fetchall()
+        rows = cursor.fetchall() # 각 행이 rows 리스트에 저장됨
 
-        self.model.removeRows(0, self.model.rowCount())  # 기존 데이터 제거
+        # 기존 데이터 제거
+        self.model.removeRows(0, self.model.rowCount())
 
         for row in rows:
-            row_start_time = QDateTime.fromString(row[3], 'yyyy-MM-dd HH:mm:ss')
+            index = row[0]
+            name = row[1]
+            block = row[2]
+            channel = row[3]
+            start_time = row[4]
+            end_time = row[5]
+            duration = row[6]
+            start_offset = row[7]
+            end_offset = row[8]
+            size = row[9]
+            del_type = row[10]
+            i_frame = row[11]
+            p_frame = row[12]
+            is_it_del = row[13]
 
-            # 필터링 조건을 확인하여 데이터를 모델에 추가
-            if not filter_start_datetime or not filter_end_datetime or (filter_start_datetime <= row_start_time <= filter_end_datetime):
-                index = int(row[0])  # 문자열로 하면 정렬이 안돼서 정수로 변환
-                name = row[1]
-                channel = row[2]
-                start_time = row[3]
-                end_time = row[4]
-                start_offset = row[5]
-                end_offset = row[6]
-                size = row[7]
+            self.model.insertRow(self.model.rowCount())  # 새로운 행 삽입
+            checkbox_item = QStandardItem()  # 체크박스 아이템 생성
+            checkbox_item.setCheckable(True)  # 체크 가능하도록 설정
+            self.model.setItem(self.model.rowCount() - 1, 0, checkbox_item)  # 체크박스를 첫 번째 열에 추가
 
-                self.model.insertRow(self.model.rowCount())  # 새로운 행 삽입
-
-                for col, value in enumerate(row):
-                    item = QStandardItem(str(value))
-                    item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
-                    self.model.setItem(self.model.rowCount() - 1, col, item)
+            for col, value in enumerate(row):
+                item = QStandardItem()
+                if col == 0 or col == 2:  # index와 name에 대한 값들은 int로 설정
+                    item.setData(int(value), Qt.DisplayRole)  # Qt.DisplayRole: 모델 데이터를 표시할 때 사용
+                else:
+                    item.setData(value, Qt.DisplayRole)
+                item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
+                self.model.setItem(self.model.rowCount() - 1, col + 1, item)  # 체크박스 추가 위해 col + 1
 
         connection.close()
+
+    def update_allocated(self):
+        pass
+
+    def update_unallocated(self):
+        pass
+
+    def update_log(self):
+        pass
 
     def update_preview(self, image_path):
         # Image loading and updating preview...
         pass
 
     def on_tree_select(self):
-        selected_items = self.tree.selectedItems()  # 현재 선택된 항목의 목록 가져오기
-
-        ''' 위랑 중복이라 일단 주석 / 트리 항목 선택하면 뭐 보여줄 지? 우클릭해서 정밀 검색하도록? 
-        if selected_items:
-            selected_item = selected_items[0]
-            for filepath, item in self.files.items():
-                if item == selected_item:
-                    with open(filepath, 'rb') as file:
-                        hex_value = file.read(5000).hex()
-                        formatted_hex_lines = self.format_hex_lines(hex_value)  # 포맷된 라인 리스트로 받음
-
-                        self.display_hex_value(formatted_hex_lines)
-                        self.update_hex_offset(formatted_hex_lines)
-                        self.display_ascii(formatted_hex_lines) #
-                    break '''
+        selected_items = self.tree.selectedItems()
 
         if selected_items:
             selected_item = selected_items[0]
             selected_name = selected_item.text(0)
 
-            if selected_name == "Precise Scan":
-                # "Precise Scan" 항목을 선택한 경우 오른쪽 측면을 업데이트하는 메서드 호출
-                self.update_right_side_for_precise_scan()
-                print(self.files)
+            try:
+                if selected_name == self.filename:
+                    self.update_root_scan(list(self.files.keys())[0])
+                    print("filename selected: " + list(self.files.keys())[0])
 
-            elif selected_name == self.filename:
-                self.Root_Scan(list(self.files.keys())[0])
-                print("filename selected: " + list(self.files.keys())[0])
+                elif selected_name == "Precise Scan":
+                    self.update_precise_scan()
 
+                elif selected_name == "Allocated":
+                    self.update_allocated()
 
+                elif selected_name == "Unallocated":
+                    self.update_unallocated()
+
+                elif selected_name == "Log":
+                    self.update_log()
+
+            except Exception as e:
+                print(f"An error occurred in on_tree_select: {e}")
 
         else:
             # 아무 항목도 선택하지 않은 경우 처리
             pass
-
-    def update_right_side_for_precise_scan(self):
-        # self.hex_display.clear() # 기존 내용 지우기
-        # self.hex_offset.clear()
-        # self.ascii_display.clear()
-
-        # 오른쪽 영역 - mainLayout
-        self.model.setColumnCount(14)  # 모델에 있는 컬럼 수 설정
-        self.model.setHorizontalHeaderLabels(
-            ["Index", "Name", "Block", "Channel", "Start Time", "End Time", "Duration", "Start Offset", "End Offset",
-             "Size", "Del Type", "I-Frame", "P-Frame", "삭제 여부"])
-        self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.blocktable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-
-        # 예제: "Precise Scan"을 위한 hex_display에 텍스트 설정
-        # self.hex_display.setPlainText("이것은 Precise Scan 내용입니다.")
 
     def format_hex_lines(self, hex_value):
         hex_lines = textwrap.wrap(hex_value, 32)  # textwrap.wrap을 사용하여 hex 문자열을 32자씩 분할하여 리스트 생성
@@ -520,6 +576,8 @@ class UI_main(QMainWindow):
 
         if result == QMessageBox.Yes:
             print("User clicked Yes. Proceeding with precise scan.")
+            ps = Scan(filepath) # 정밀스캔
+            ps.analyzer() # db 생성
 
         elif result == QMessageBox.No:
             print("트리에 비활성화 시켜야")
