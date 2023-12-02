@@ -53,9 +53,7 @@ def process_frame_set(frame_set, status, block_cnt, AU):
             p_frame_cnt += 1
         size += frame["frame_size"] - 0x23
 
-    if block_cnt == 1:
-        print(hex(frame_set[-1]["frame_offset"]))
-        print(hex(frame_set[-1]["frame_size"]))
+
     insert_data_precise_scan(str(frame_set[0]["frame_time"]) + " ~ " + str(frame_set[-1]["frame_time"]), block_cnt,
                              frame_set[0]["frame_channel"], str(frame_set[0]["frame_time"]),
                              str(frame_set[-1]["frame_time"]), duration, base + frame_set[0]["frame_offset"],
