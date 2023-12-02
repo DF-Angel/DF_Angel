@@ -40,7 +40,7 @@ class Scan:
                 block_meta.append([block_index[0], block_start_time, block_end_time, block_channel])
             #print(block_meta[28])
             for i in range(len(block_meta)):
-                #print(block_cnt)
+                print(block_cnt)
                 if block_meta[i] == []:
                     block_cnt += 1
                     continue
