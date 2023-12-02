@@ -139,6 +139,10 @@ class Allocated_Block_Scan:
                     frame_meta = file.read(32)
                     if int.from_bytes(frame_meta) == 0x00:
                         #print("Block : " + str(block_cnt) + ", ", end='')
+                        file_loc = file.tell()
+                        file.seek(0x80100000 + block_cnt * 0x10000000 + 0x500000 + frame_set[-1]["frame_offset"], 0)
+                        frame_set[-1]["frame_size"] = int.from_bytes(file.read(32)[0x10:0x14], byteorder="little")
+                        file.seek(file_loc, 0)
                         process_frame_set(frame_set, status, block_cnt, 0)
                         return
                     frame_time = convert_to_datetime(int.from_bytes(frame_meta[0x04:0x08], byteorder='little'))
@@ -147,6 +151,10 @@ class Allocated_Block_Scan:
                     frame_type = frame_meta[0x1A]
                     frame_offset = int.from_bytes(frame_meta[0x1C:0x20], byteorder='little')
                     if frame_set[-1]["frame_time"] > frame_time:
+                        file_loc = file.tell()
+                        file.seek(0x80100000 + block_cnt * 0x10000000 + 0x500000 + frame_set[-1]["frame_offset"], 0)
+                        frame_set[-1]["frame_size"] = int.from_bytes(file.read(32)[0x10:0x14], byteorder="little")
+                        file.seek(file_loc, 0)
                         allocated_block_end = 0
                         break
                     frame_set[-1]["frame_size"] = frame_offset - frame_set[-1]["frame_offset"] - 0xC4

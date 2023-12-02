@@ -96,6 +96,9 @@ class LogParse:
                 hours = int(hours_str) if hours_str else 0
                 hours += 12  # 오후인 경우 12를 더해줌
 
+                if hours == 24:
+                    hours = 12
+
                 datetime_str = re.sub(r'오후 \d+:', f'{hours:02d}:', datetime_str)
                 datetime_str = datetime_str.replace('  ', ' ')
 
@@ -104,6 +107,9 @@ class LogParse:
                 hours_str = hours_match.group(1) if hours_match else None
                 hours = int(hours_str) if hours_str else 0
                 hours += 0  # 오후인 경우 12를 더해줌
+
+                if hours == 12:
+                    hours = 0
 
                 datetime_str = re.sub(r'오전 \d+:', f'{hours:02d}:', datetime_str)
                 datetime_str = datetime_str.replace('  ', ' ')
@@ -120,6 +126,9 @@ class LogParse:
                 hours = int(hours_str) if hours_str else 0
                 hours += 12  # 오후인 경우 12를 더해줌
 
+                if hours == 24:
+                    hours = 12
+
                 EVENT = re.sub(r'오후 \d+:', f'{hours:02d}:', EVENT)
                 EVENT = EVENT.replace('  ', ' ')
 
@@ -128,6 +137,9 @@ class LogParse:
                 hours_str = hours_match.group(1) if hours_match else None
                 hours = int(hours_str) if hours_str else 0
                 hours += 0
+
+                if hours == 12:
+                    hours = 0
 
                 EVENT = re.sub(r'오전 \d+:', f'{hours:02d}:', EVENT)
                 EVENT = EVENT.replace('  ', ' ')
