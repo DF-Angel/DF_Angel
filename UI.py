@@ -1,4 +1,5 @@
 import binascii
+import os
 import sys
 import struct
 import datetime
@@ -17,13 +18,11 @@ import sqlite3
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QRegExpValidator
 #from Extract import Extractor
 
-
 class CustomSortFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
         super(CustomSortFilterProxyModel, self).__init__(*args, **kwargs)
         self.start_datetime = None
         self.end_datetime = None
-
 
 class UI_main(QMainWindow):
     def __init__(self):  # 생성자
@@ -149,14 +148,13 @@ class UI_main(QMainWindow):
         self._create_menubar()
 
     # 마우스 우클릭 Extract 기능
-    def context_menu(self, position):
-        menu = QMenu()
-
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
         extract_action = menu.addAction("Extract")
         extract_action.triggered.connect(self.extract_selected_rows)
 
         # 메뉴 실행
-        menu.exec_(self.blocktable.viewport().mapToGlobal(position))
+        menu.exec_(event.globalPos())
 
     # Extract 저장경로 설정
     def select_output_folder(self):
@@ -207,9 +205,12 @@ class UI_main(QMainWindow):
 
         # File
         fileMenu = menubar.addMenu('File')
-        loadAction = QAction('Load Image', self)
-        loadAction.triggered.connect(self.open_image)  # Load Image 액션의 트리거 시그널 발생 시 self.open_image 메서드 호출
-        fileMenu.addAction(loadAction)  # "File" 메뉴에 방금 생성한 "Load Image" 액션을 추가
+        caseAction = QAction('New Case', self)
+        caseAction.triggered.connect(self.new_case)  # New Case 액션의 트리거 시그널이 발생 시 self.new_case 메서드 호출
+        loadCAction = QAction('Load Case', self)
+        loadCAction.triggered.connect(self.open_case)  # Load Case 액션의 트리거 시그널이 발생 시 self.open_case 메서드 호출
+        fileMenu.addAction(caseAction)
+        fileMenu.addAction(loadCAction)
 
         # Search
         searchMenu = menubar.addMenu('Search')
@@ -226,21 +227,58 @@ class UI_main(QMainWindow):
         # About
         aboutMenu = menubar.addMenu('About')
 
-    def open_image(self):
+    def new_case(self):
+        # 사용자가 생성할 케이스명 입력
+        case_name, ok = QInputDialog.getText(self, 'New Case', '<b>Enter case name</b>  <br>Next, select the path to the case file.')
+        self.casename = case_name  # casename 전역변수 저장
+
+        if not ok or not case_name:
+            return
+
+        # 사용자가 생성할 경로 선택
+        selected_directory = QFileDialog.getExistingDirectory(self, 'Select Directory', os.getcwd())
+
+        if not selected_directory:
+            return
+
+        # 케이스 경로 생성
+        case_directory = os.path.join(selected_directory, case_name)
+
+        if not os.path.exists(case_directory):
+            os.makedirs(case_directory)
+
+            # DB, Export 디렉토리 생성
+            db_directory = os.path.join(case_directory, 'DB')
+            export_directory = os.path.join(case_directory, 'Export')
+
+            os.makedirs(db_directory)
+            os.makedirs(export_directory)
+
+            QMessageBox.information(self, 'Success', f'Case "{case_name}" created successfully at {case_directory}. <br><br><b>Select the image you want to analyze.</b> ')
+
+        else:
+            QMessageBox.warning(self, 'Error', f'Case "{case_name}" already exists at {case_directory}.')
+
+        global filepath
+
         try:
             filepath, _ = QFileDialog.getOpenFileName(self, "Open file", "", "All Files (*)")  # filepath에 경로 저장
+            if not filepath:
+                return
 
+            imgpath_file = os.path.join(case_directory, 'imgpath.case')
+            with open(imgpath_file, 'w') as file:
+                file.write(filepath)
+            QMessageBox.information(self, 'Success', f"File '{case_directory}' created successfully.")
             self.filename = filepath.split("/")[-1]  # 경로에서 파일 이름만 추출해 전역변수 저장
 
-            # 경로 넘기고 객체로 받기
-            rs = Root_Scan(filepath)
+            df = Root_Scan(filepath)  # Root_Scan()에 경로 넘기고 객체로 받기
 
-            if rs.check_file_validation() == 0:  # 파일이 정상적으로 열렸는지 확인
+            if df.check_file_validation() == 0:  # 파일이 정상적으로 열렸는지 확인
                 print("Invalid G2FDb image file. Exiting.")
                 sys.exit()  # 프로그램 종료
 
-            # analyzer 메소드 호출해 파일 분석, db 생성
-            rs.analyzer()
+            df.analyzer()  # Root_Scan 클래스의 analyzer 메소드 호출해 파일 분석, db 생성
 
             if filepath:
                 item = QTreeWidgetItem(self.tree)  # 새로운 트리 항목(item) 생성
@@ -258,13 +296,26 @@ class UI_main(QMainWindow):
                     self.display_ascii(formatted_hex_lines)
 
             db_filepath = './IDIS_FS_sqlite.db'
-
-            self.update_root_scan(filepath)
+            self.process_file(db_filepath)  # 파일 처리 메서드 호출
             self.show_warning_message(filepath)
 
-        except Exception as e:
-            print(f"An error occurred in open_image: {e}")
+            self.Root_Scan(filepath)
 
+        except Exception as e:
+            print(f"An error occurred in open_imageㅏㅗ: {e}")
+
+    def open_case(self):
+        # 사용자에게 디렉토리를 선택하도록 요청
+        selected_directory = QFileDialog.getExistingDirectory(self, 'Select Case Directory', os.getcwd())
+        self.casename = selected_directory.split("/")[-1]  # 경로에서 파일 이름만 추출해 전역변수 저장
+
+        if not selected_directory:
+            return
+
+        # 여기에 케이스를 불러오는 추가적인 코드를 작성
+        # selected_directory 변수에 선택한 디렉토리 경로가 들어 있음
+
+        QMessageBox.information(self, 'Success', f'Case loaded from {selected_directory}.')
     def update_root_scan(self, filepath):
         print("again Root_Scan")
 
@@ -277,15 +328,10 @@ class UI_main(QMainWindow):
         db_filepath = './IDIS_FS_sqlite.db'
         self.process_root_scan(db_filepath)  # db 접근 메소드
 
-        # 테이블 상단에 필터링 행 추가
-        for col in range(self.model.columnCount()):  # 모델 열 개수
-            item = QStandardItem("")  # 각 열에 해당하는 새로운 아이템 생성
-            item.setFlags(Qt.ItemIsEditable | Qt.ItemIsEnabled)  # 편집 가능하고 활성화
-            self.model.setItem(0, col, item)  # 모델 첫번째 행에 해당하는 각 열에 아이템 설정
-
-        # 아이템 변경 시 필터링 메소드 호출  사용자가 필터링 행에 값을 입력할 때마다 filtering_method 메소드가 호출되어 필터링이 업데이트
-        self.model.itemChanged.connect(self.filtering_method)  # 모델 내의 아이템이 변경될 때 발생하는 신호입니다. 이 신호는 모델 내의 아이템이 편집되면 발생
-        ###### 이 부분을 엔터키로 바꿔야 할 것 같음. 바뀌자마자 신호가 가서 한 번에 바뀌도록 해야 할 것 같다
+    def onCheckButtonClicked(self):
+        print("Check button clicked")
+        # Call the filtering method when the button is clicked
+        self.filtering_method()
 
     def filtering_method(self):  # 필터링 데이터 전달
         try:
@@ -317,9 +363,6 @@ class UI_main(QMainWindow):
             cursor.execute(query)
             result = cursor.fetchall()  # 각 행이 result 리스트에 저장됨
 
-            # 시그널 연결 해제
-            self.model.itemChanged.disconnect(self.filtering_method)
-
             # 결과를 모델에 추가하기 전에 기존 데이터 제거
             self.model.clear()  # 모델 전체를 비우는 메소드 사용
 
@@ -345,12 +388,6 @@ class UI_main(QMainWindow):
                     item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
                     self.model.setItem(self.model.rowCount() - 1, col + 1, item)  # 체크박스 추가 위해 col + 1
 
-            # 시그널 재연결
-            #self.model.itemChanged.connect(self.filtering_method)
-
-            # 연결 종료
-            connection.close()
-
         except Exception as e:
             print(f"An exception2 occurred: {e}")
 
@@ -366,6 +403,17 @@ class UI_main(QMainWindow):
 
         # 기존 데이터 제거
         self.model.removeRows(0, self.model.rowCount())
+
+        # 테이블 상단에 필터링 행 추가
+        for col in range(self.model.columnCount()):  # 모델 열 개수
+            item = QStandardItem("")  # 각 열에 해당하는 새로운 아이템 생성
+            item.setFlags(Qt.ItemIsEditable | Qt.ItemIsEnabled)  # 편집 가능하고 활성화
+            self.model.setItem(0, col, item)  # 모델 첫번째 행에 해당하는 각 열에 아이템 설정
+
+        # Filtering 버튼 추가
+        check_button = QPushButton("Filtering")
+        self.blocktable.setIndexWidget(self.model.index(0, 0), check_button)
+        check_button.clicked.connect(self.onCheckButtonClicked)
 
         for row in rows:
             row_start_time = QDateTime.fromString(row[3], 'yyyy-MM-dd HH:mm:ss')
@@ -483,8 +531,6 @@ class UI_main(QMainWindow):
                     print("filename selected: " + list(self.files.keys())[0])
 
                 elif selected_name == "Precise Scan":
-                    # itemChanged 시그널을 차단
-                    self.model.itemChanged.disconnect()
                     self.update_precise_scan()
 
                 elif selected_name == "Allocated":
