@@ -1,4 +1,5 @@
 import binascii
+import os
 import sys
 import struct
 import datetime
@@ -204,9 +205,12 @@ class UI_main(QMainWindow):
 
         # File
         fileMenu = menubar.addMenu('File')
-        loadAction = QAction('Load Image', self)
-        loadAction.triggered.connect(self.open_image)  # Load Image 액션의 트리거 시그널 발생 시 self.open_image 메서드 호출
-        fileMenu.addAction(loadAction)  # "File" 메뉴에 방금 생성한 "Load Image" 액션을 추가
+        caseAction = QAction('New Case', self)
+        caseAction.triggered.connect(self.new_case)  # New Case 액션의 트리거 시그널이 발생 시 self.new_case 메서드 호출
+        loadCAction = QAction('Load Case', self)
+        loadCAction.triggered.connect(self.open_case)  # Load Case 액션의 트리거 시그널이 발생 시 self.open_case 메서드 호출
+        fileMenu.addAction(caseAction)
+        fileMenu.addAction(loadCAction)
 
         # Search
         searchMenu = menubar.addMenu('Search')
@@ -223,21 +227,58 @@ class UI_main(QMainWindow):
         # About
         aboutMenu = menubar.addMenu('About')
 
-    def open_image(self):
+    def new_case(self):
+        # 사용자가 생성할 케이스명 입력
+        case_name, ok = QInputDialog.getText(self, 'New Case', '<b>Enter case name</b>  <br>Next, select the path to the case file.')
+        self.casename = case_name  # casename 전역변수 저장
+
+        if not ok or not case_name:
+            return
+
+        # 사용자가 생성할 경로 선택
+        selected_directory = QFileDialog.getExistingDirectory(self, 'Select Directory', os.getcwd())
+
+        if not selected_directory:
+            return
+
+        # 케이스 경로 생성
+        case_directory = os.path.join(selected_directory, case_name)
+
+        if not os.path.exists(case_directory):
+            os.makedirs(case_directory)
+
+            # DB, Export 디렉토리 생성
+            db_directory = os.path.join(case_directory, 'DB')
+            export_directory = os.path.join(case_directory, 'Export')
+
+            os.makedirs(db_directory)
+            os.makedirs(export_directory)
+
+            QMessageBox.information(self, 'Success', f'Case "{case_name}" created successfully at {case_directory}. <br><br><b>Select the image you want to analyze.</b> ')
+
+        else:
+            QMessageBox.warning(self, 'Error', f'Case "{case_name}" already exists at {case_directory}.')
+
+        global filepath
+
         try:
             filepath, _ = QFileDialog.getOpenFileName(self, "Open file", "", "All Files (*)")  # filepath에 경로 저장
+            if not filepath:
+                return
 
+            imgpath_file = os.path.join(case_directory, 'imgpath.case')
+            with open(imgpath_file, 'w') as file:
+                file.write(filepath)
+            QMessageBox.information(self, 'Success', f"File '{case_directory}' created successfully.")
             self.filename = filepath.split("/")[-1]  # 경로에서 파일 이름만 추출해 전역변수 저장
 
-            # 경로 넘기고 객체로 받기
-            rs = Root_Scan(filepath)
+            df = Root_Scan(filepath)  # Root_Scan()에 경로 넘기고 객체로 받기
 
-            if rs.check_file_validation() == 0:  # 파일이 정상적으로 열렸는지 확인
+            if df.check_file_validation() == 0:  # 파일이 정상적으로 열렸는지 확인
                 print("Invalid G2FDb image file. Exiting.")
                 sys.exit()  # 프로그램 종료
 
-            # analyzer 메소드 호출해 파일 분석, db 생성
-            rs.analyzer()
+            df.analyzer()  # Root_Scan 클래스의 analyzer 메소드 호출해 파일 분석, db 생성
 
             if filepath:
                 item = QTreeWidgetItem(self.tree)  # 새로운 트리 항목(item) 생성
@@ -255,13 +296,26 @@ class UI_main(QMainWindow):
                     self.display_ascii(formatted_hex_lines)
 
             db_filepath = './IDIS_FS_sqlite.db'
-
-            self.update_root_scan(filepath)
+            self.process_file(db_filepath)  # 파일 처리 메서드 호출
             self.show_warning_message(filepath)
 
-        except Exception as e:
-            print(f"An error occurred in open_image: {e}")
+            self.Root_Scan(filepath)
 
+        except Exception as e:
+            print(f"An error occurred in open_imageㅏㅗ: {e}")
+
+    def open_case(self):
+        # 사용자에게 디렉토리를 선택하도록 요청
+        selected_directory = QFileDialog.getExistingDirectory(self, 'Select Case Directory', os.getcwd())
+        self.casename = selected_directory.split("/")[-1]  # 경로에서 파일 이름만 추출해 전역변수 저장
+
+        if not selected_directory:
+            return
+
+        # 여기에 케이스를 불러오는 추가적인 코드를 작성
+        # selected_directory 변수에 선택한 디렉토리 경로가 들어 있음
+
+        QMessageBox.information(self, 'Success', f'Case loaded from {selected_directory}.')
     def update_root_scan(self, filepath):
         print("again Root_Scan")
 

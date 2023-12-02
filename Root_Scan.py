@@ -22,7 +22,7 @@ class Root_Scan:
             block_cnt = 1
             while True:
                 block_index = file.read(64)
-                if int.from_bytes(block_index[:64]) == 0x00:
+                if int.from_bytes(block_index[:64], byteorder='little') == 0x00:
                     break
                 if block_index[0] != 0x05 and block_index[0] != 0x06:
                     continue
