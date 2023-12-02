@@ -17,13 +17,11 @@ import sqlite3
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QRegExpValidator
 #from Extract import Extractor
 
-
 class CustomSortFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
         super(CustomSortFilterProxyModel, self).__init__(*args, **kwargs)
         self.start_datetime = None
         self.end_datetime = None
-
 
 class UI_main(QMainWindow):
     def __init__(self):  # 생성자
@@ -149,14 +147,13 @@ class UI_main(QMainWindow):
         self._create_menubar()
 
     # 마우스 우클릭 Extract 기능
-    def context_menu(self, position):
-        menu = QMenu()
-
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
         extract_action = menu.addAction("Extract")
         extract_action.triggered.connect(self.extract_selected_rows)
 
         # 메뉴 실행
-        menu.exec_(self.blocktable.viewport().mapToGlobal(position))
+        menu.exec_(event.globalPos())
 
     # Extract 저장경로 설정
     def select_output_folder(self):
@@ -277,15 +274,10 @@ class UI_main(QMainWindow):
         db_filepath = './IDIS_FS_sqlite.db'
         self.process_root_scan(db_filepath)  # db 접근 메소드
 
-        # 테이블 상단에 필터링 행 추가
-        for col in range(self.model.columnCount()):  # 모델 열 개수
-            item = QStandardItem("")  # 각 열에 해당하는 새로운 아이템 생성
-            item.setFlags(Qt.ItemIsEditable | Qt.ItemIsEnabled)  # 편집 가능하고 활성화
-            self.model.setItem(0, col, item)  # 모델 첫번째 행에 해당하는 각 열에 아이템 설정
-
-        # 아이템 변경 시 필터링 메소드 호출  사용자가 필터링 행에 값을 입력할 때마다 filtering_method 메소드가 호출되어 필터링이 업데이트
-        self.model.itemChanged.connect(self.filtering_method)  # 모델 내의 아이템이 변경될 때 발생하는 신호입니다. 이 신호는 모델 내의 아이템이 편집되면 발생
-        ###### 이 부분을 엔터키로 바꿔야 할 것 같음. 바뀌자마자 신호가 가서 한 번에 바뀌도록 해야 할 것 같다
+    def onCheckButtonClicked(self):
+        print("Check button clicked")
+        # Call the filtering method when the button is clicked
+        self.filtering_method()
 
     def filtering_method(self):  # 필터링 데이터 전달
         try:
@@ -317,9 +309,6 @@ class UI_main(QMainWindow):
             cursor.execute(query)
             result = cursor.fetchall()  # 각 행이 result 리스트에 저장됨
 
-            # 시그널 연결 해제
-            self.model.itemChanged.disconnect(self.filtering_method)
-
             # 결과를 모델에 추가하기 전에 기존 데이터 제거
             self.model.clear()  # 모델 전체를 비우는 메소드 사용
 
@@ -345,12 +334,6 @@ class UI_main(QMainWindow):
                     item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
                     self.model.setItem(self.model.rowCount() - 1, col + 1, item)  # 체크박스 추가 위해 col + 1
 
-            # 시그널 재연결
-            #self.model.itemChanged.connect(self.filtering_method)
-
-            # 연결 종료
-            connection.close()
-
         except Exception as e:
             print(f"An exception2 occurred: {e}")
 
@@ -366,6 +349,17 @@ class UI_main(QMainWindow):
 
         # 기존 데이터 제거
         self.model.removeRows(0, self.model.rowCount())
+
+        # 테이블 상단에 필터링 행 추가
+        for col in range(self.model.columnCount()):  # 모델 열 개수
+            item = QStandardItem("")  # 각 열에 해당하는 새로운 아이템 생성
+            item.setFlags(Qt.ItemIsEditable | Qt.ItemIsEnabled)  # 편집 가능하고 활성화
+            self.model.setItem(0, col, item)  # 모델 첫번째 행에 해당하는 각 열에 아이템 설정
+
+        # Filtering 버튼 추가
+        check_button = QPushButton("Filtering")
+        self.blocktable.setIndexWidget(self.model.index(0, 0), check_button)
+        check_button.clicked.connect(self.onCheckButtonClicked)
 
         for row in rows:
             row_start_time = QDateTime.fromString(row[3], 'yyyy-MM-dd HH:mm:ss')
@@ -483,8 +477,6 @@ class UI_main(QMainWindow):
                     print("filename selected: " + list(self.files.keys())[0])
 
                 elif selected_name == "Precise Scan":
-                    # itemChanged 시그널을 차단
-                    self.model.itemChanged.disconnect()
                     self.update_precise_scan()
 
                 elif selected_name == "Allocated":
