@@ -33,6 +33,9 @@ class Scan:
                     block_end_time = convert_to_datetime(
                         int.from_bytes(block_index[0x12:0x16], byteorder='little')
                     )
+                    if block_start_time == 0 or block_end_time == 0:
+                        block_meta.append([])
+                        continue
                 block_channel = block_index[0x22]
                 block_meta.append([block_index[0], block_start_time, block_end_time, block_channel])
             #print(block_meta[28])

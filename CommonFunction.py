@@ -18,6 +18,7 @@ def convert_to_datetime(time_info):
 
 def process_frame_set(frame_set, status, block_cnt, AU):
     # Process and organize the complete set of frames
+    base = 0x80100000 + 0x10000000 * block_cnt + 0x500000
     start_time = frame_set[0]["frame_time"]
     last_time = frame_set[-1]["frame_time"]
     channel = frame_set[0]["frame_channel"]
@@ -44,6 +45,7 @@ def process_frame_set(frame_set, status, block_cnt, AU):
     i_frame_cnt = 0
     p_frame_cnt = 0
     size = 0
+
     for frame in frame_set:
         if frame["frame_type"] == 0:
             i_frame_cnt += 1
@@ -51,8 +53,9 @@ def process_frame_set(frame_set, status, block_cnt, AU):
             p_frame_cnt += 1
         size += frame["frame_size"] - 0x23
 
+
     insert_data_precise_scan(str(frame_set[0]["frame_time"]) + " ~ " + str(frame_set[-1]["frame_time"]), block_cnt,
                              frame_set[0]["frame_channel"], str(frame_set[0]["frame_time"]),
-                             str(frame_set[-1]["frame_time"]), duration, frame_set[0]["frame_offset"],
-                             frame_set[-1]["frame_offset"] + frame_set[-1]["frame_size"] + 0xA0, size, status, i_frame_cnt,
+                             str(frame_set[-1]["frame_time"]), duration, base + frame_set[0]["frame_offset"],
+                             base + frame_set[-1]["frame_offset"] + frame_set[-1]["frame_size"] + 0xA0, size, status, i_frame_cnt,
                              p_frame_cnt, AU)

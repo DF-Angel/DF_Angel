@@ -29,5 +29,5 @@ class Root_Scan:
                 start_time = convert_to_datetime(int.from_bytes(block_index[0x06:0x0A], byteorder='little'))
                 end_time = convert_to_datetime(int.from_bytes(block_index[0x12:0x16], byteorder='little'))
                 ch = block_index[0x22]
-                insert_data_root_scan(block_cnt, ch, start_time, end_time, 0x10000000 * block_cnt, 0x10000000 * (block_cnt + 1) - 1, 0x10000000)
+                insert_data_root_scan(block_cnt, ch, start_time, end_time, base + 0x10000000 * block_cnt, base + 0x10000000 * (block_cnt + 1) - 1, 0x10000000)
                 block_cnt += 1
