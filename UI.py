@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenuBar, QAction, QTree
 from PyQt5.QtCore import Qt, QSortFilterProxyModel, QTime, QDateTime, QRegExp, pyqtSignal, QSortFilterProxyModel
 import sqlite3
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QRegExpValidator
-#from Extract import Extractor
+from Extract_Video import main as extract_main
 
 class CustomSortFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
@@ -166,39 +166,18 @@ class UI_main(QMainWindow):
 
     # Extract 기능
     def extract_selected_rows(self):
-        # 체크된 항목들을 가져옵니다.
-        checked_indexes = [self.model.item(row, 1).text() for row in range(self.model.rowCount()) if
-                           self.model.item(row, 0).checkState() == Qt.Checked]
+        # 체크된 항목들의 인덱스를 가져옵니다.
+        checked_indexes = [int(self.model.item(row, 1).text()) for row in range(self.model.rowCount())
+                        if self.model.item(row, 0).checkState() == Qt.Checked]
 
         if not checked_indexes:
-            # 체크된 항목이 없으면 메시지를 표시하고 리턴
             QMessageBox.information(self, "Extract", "No rows selected for extraction.")
             return
 
-        # 데이터베이스 연결 생성
-        connection = sqlite3.connect('IDIS_FS_sqlite.db')
-        cursor = connection.cursor()
-
-        # 추출할 파일들을 저장할 경로 설정
-        extracted_folder_path = self.select_output_folder()
-        if not extracted_folder_path:
-            return
-
-        #extractor = Extractor(self.filepath, extracted_folder_path)
-
-        # 각 체크된 항목에 대해 처리
-        for index_value in checked_indexes:
-            # 데이터베이스에서 START_OFFSET 및 END_OFFSET 검색
-            query = "SELECT START_OFFSET, END_OFFSET FROM ROOT_SCAN WHERE idx = ?"
-            cursor.execute(query, (index_value,))
-            result = cursor.fetchone()
-
-            if result:
-                start_offset, end_offset = result
-                #extractor.read_at_offset(int(start_offset), int(end_offset))
-
-        # 데이터베이스 연결 종료
-        connection.close()
+        # 현재 스크립트와 동일한 경로에 추출된 비디오를 저장합니다.
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        db_filepath = 'IDIS_FS_sqlite.db'
+        extract_main(db_filepath, filepath, checked_indexes, current_dir)
 
     def _create_menubar(self):
         menubar = self.menuBar()  # 현재 윈도우에 대한 메뉴바 가져옴 / self: 현재 클래스의 인스턴스
@@ -299,10 +278,14 @@ class UI_main(QMainWindow):
             self.process_file(db_filepath)  # 파일 처리 메서드 호출
             self.show_warning_message(filepath)
 
-            self.Root_Scan(filepath)
+            Root_Scan(filepath)
 
         except Exception as e:
-            print(f"An error occurred in open_imageㅏㅗ: {e}")
+            print(f"An error occurred in open_image: {e}")
+
+    def process_file(self, filepath):
+        # An error occurred in open_image: 'UI_main' object has no attribute 'process_file' 이 에러 잡기 위한 코드
+        print(f"Processing file: {filepath}")
 
     def open_case(self):
         # 사용자에게 디렉토리를 선택하도록 요청
