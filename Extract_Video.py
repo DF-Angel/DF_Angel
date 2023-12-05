@@ -55,10 +55,11 @@ def little_endian_to_int(bytes_data):
 
 def extract_frames(db_filepath, image_filepath, selected_rows, output_folder):
     # 'Extracted' 폴더를 생성합니다.
+    '''
     extracted_folder = os.path.join(output_folder, 'Extracted')
     if not os.path.isdir(extracted_folder):
         logging.info(f"Creating extracted folder at {extracted_folder}")
-        os.makedirs(extracted_folder, exist_ok=True)
+        os.makedirs(extracted_folder, exist_ok=True)'''
 
     connection = sqlite3.connect(db_filepath)
     logging.info(f"Database connected: {db_filepath}")
@@ -76,8 +77,8 @@ def extract_frames(db_filepath, image_filepath, selected_rows, output_folder):
         start_offset = start_offset_result[0]
         metadata_offset = start_offset + 0x100000
 
-        frame_data_file = os.path.join(extracted_folder, f'block_{index}.bin')  # 'Extracted' 폴더에 프레임 데이터 파일 저장
-        index_file = os.path.join(extracted_folder, f'index_{index}.txt')  # 'Extracted' 폴더에 인덱스 파일 저장
+        frame_data_file = os.path.join(output_folder, f'block_{index}.bin')  # 'Extracted' 폴더에 프레임 데이터 파일 저장
+        index_file = os.path.join(output_folder, f'index_{index}.txt')  # 'Extracted' 폴더에 인덱스 파일 저장
 
         with open(frame_data_file, 'wb') as fd_file, open(index_file, 'w') as idx_file, open(image_filepath, 'rb') as file:
             while True:
