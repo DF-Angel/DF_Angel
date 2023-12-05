@@ -67,6 +67,19 @@ def insert_data_log(EVENT, DATETIME):
     conn.commit()
     conn.close()
 
+
+def insert_data_association(raw):
+    conn = connect_db()
+    c = conn.cursor()
+
+    c.execute('''
+        INSERT INTO ASSOCIATION (NAME , BLOCK , CH , START_TIME , END_TIME , DURATION , START_OFFSET , END_OFFSET ,SIZE, DEL_TYPE, I_FRAME, P_FRAME, IS_IT_DEL, ASSOCIATION_TYPE)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    ''', (raw))
+
+    conn.commit()
+    conn.close()
+
 # 데이터베이스 초기화
 del_db()
 
@@ -81,3 +94,6 @@ create_table("PRECISE_SCAN",
 
 create_table("LOG",
              "EVENT TEXT, DATETIME TEXT")
+
+create_table("ASSOCIATION",
+             "NAME TEXT, BLOCK INTEGER, CH INTEGER, START_TIME TEXT, END_TIME TEXT, DURATION TEST, START_OFFSET INTEGER, END_OFFSET INTEGER, SIZE INTEGER, DEL_TYPE INTEGER, I_FRAME INTEGER, P_FRAME INTEGER, IS_IT_DEL INTEGER,ASSOCIATION_TYPE INTEGER")
