@@ -13,7 +13,8 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenuBar, QAction, QTree
                              QWidget, QFileDialog, QMessageBox, QGridLayout, QHeaderView, QTextBrowser, QTableView,
                              QCalendarWidget, QDialog, QPushButton, QInputDialog, QTimeEdit, QLineEdit, QFormLayout,
                              QSizePolicy, QMenu)
-from PyQt5.QtCore import Qt, QSortFilterProxyModel, QTime, QDateTime, QRegExp, pyqtSignal, QSortFilterProxyModel
+from PyQt5.QtCore import Qt, QSortFilterProxyModel, QTime, QDateTime, QRegExp, pyqtSignal, QSortFilterProxyModel, QDir, \
+    QFile, QTextStream
 import sqlite3
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QRegExpValidator
 from Extract_Video import main as extract_main
@@ -283,15 +284,61 @@ class UI_main(QMainWindow):
             self.show_warning_message(filepath)
 
         except Exception as e:
-            print(f"An error occurred in open_image: {e}")
+            print(f"An error occurred in new_case: {e}")
 
     def open_case(self):
         # 사용자에게 디렉토리를 선택하도록 요청
         selected_directory = QFileDialog.getExistingDirectory(self, 'Select Case Directory', os.getcwd())
         self.casename = selected_directory.split("/")[-1]  # 경로에서 파일 이름만 추출해 전역변수 저장
-
+        print(selected_directory)
         if not selected_directory:
             return
+
+        try:
+            imgfile_path = QDir(selected_directory).filePath('imgpath.case')
+            imgfile = QFile(imgfile_path)
+            # print(imgfile)
+            if not imgfile.open(QFile.ReadOnly | QFile.Text):
+                print(f"파일을 열 수 없습니다: {imgfile.errorString()}")
+            else:
+                stream = QTextStream(imgfile)
+                while not stream.atEnd():
+                    imgpath = stream.readLine()
+                    imgfile.close()
+
+            self.filename = imgpath.split("/")[-1]  # 경로에서 파일 이름만 추출해 전역변수 저장
+
+            rs = Root_Scan(imgpath)  # Root_Scan()에 경로 넘기고 객체로 받기
+
+            if rs.check_file_validation() == 0:  # 파일이 정상적으로 열렸는지 확인
+                print("Invalid G2FDb image file. Exiting.")
+                sys.exit()  # 프로그램 종료
+
+            # analyzer 메소드 호출해 파일 분석, db 생성
+            rs.analyzer()
+
+            if imgpath:
+                item = QTreeWidgetItem(self.tree)  # 새로운 트리 항목(item) 생성
+                item.setText(0, self.filename)  # 파일 이름을 트리에 추가
+                self.files[imgpath] = item  # self.files 딕셔너리에 경로(키)와 해당 트리 뷰 항목(값) 저장
+                # print(self.files.items())
+
+                # Hex View
+                with open(imgpath, 'rb') as file:
+                    hex_value = file.read(5000).hex()
+                    formatted_hex_lines = self.format_hex_lines(hex_value)  # 포맷된 라인 리스트로 받음
+
+                    self.display_hex_value(formatted_hex_lines)
+                    self.update_hex_offset(formatted_hex_lines)
+                    self.display_ascii(formatted_hex_lines)
+
+            db_filepath = './IDIS_FS_sqlite.db'
+
+            self.update_root_scan(imgpath)  # 파일 처리 메서드 호출
+            self.show_warning_message(imgpath)
+
+        except Exception as e:
+            print(f"An error occurred in open_case: {e}")
 
         # 여기에 케이스를 불러오는 추가적인 코드를 작성
         # selected_directory 변수에 선택한 디렉토리 경로가 들어 있음
