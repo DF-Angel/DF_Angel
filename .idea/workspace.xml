@@ -4,12 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="285d2019-3f97-4687-ba6c-904c09182845" name="Changes" comment="UI - process_precise_scan, 정렬(end)">
-      <change afterPath="$PROJECT_DIR$/UI_before_filtering.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/UI_filter_ch_block.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/UI_filter_ch_block_time.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/UI_list.py" afterDir="false" />
+    <list default="true" id="285d2019-3f97-4687-ba6c-904c09182845" name="Changes" comment="UI - Filtering ch, block, Extract">
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Root_Scan.py" beforeDir="false" afterPath="$PROJECT_DIR$/Root_Scan.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/UI.py" beforeDir="false" afterPath="$PROJECT_DIR$/UI.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -30,19 +28,31 @@
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 2
+}</component>
   <component name="ProjectId" id="2XWCZ0ha2uloHovyU14ZlPVCRRj" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;C:/Users/ukkiy/바탕 화면/DF_Angel&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "main",
+    "last_opened_file_path": "C:/Users/ukkiy/바탕 화면/DF_Angel",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
   }
-}</component>
+}]]></component>
+  <component name="PyConsoleOptionsProvider">
+    <option name="myPythonConsoleState">
+      <console-settings is-module-sdk="true">
+        <option name="myUseModuleSdk" value="true" />
+      </console-settings>
+    </option>
+  </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\ukkiy\바탕 화면\DF_Angel" />
@@ -161,7 +171,15 @@
       <option name="project" value="LOCAL" />
       <updated>1701247728816</updated>
     </task>
-    <option name="localTasksCounter" value="14" />
+    <task id="LOCAL-00014" summary="UI - Filtering ch, block, Extract">
+      <option name="closed" value="true" />
+      <created>1701363253378</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1701363253378</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -195,6 +213,7 @@
     <MESSAGE value="UI 수정 - Root_Scan, 정렬" />
     <MESSAGE value="UI - Precise Scan" />
     <MESSAGE value="UI - process_precise_scan, 정렬(end)" />
-    <option name="LAST_COMMIT_MESSAGE" value="UI - process_precise_scan, 정렬(end)" />
+    <MESSAGE value="UI - Filtering ch, block, Extract" />
+    <option name="LAST_COMMIT_MESSAGE" value="UI - Filtering ch, block, Extract" />
   </component>
 </project>

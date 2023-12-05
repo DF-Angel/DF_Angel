@@ -40,15 +40,28 @@ class Allocated_Block_Scan:
             frame_type = frame_meta[0x1A]
             frame_offset = int.from_bytes(frame_meta[0x1C:0x20], byteorder='little')
             while frame_time != block_start_time:
-                frame_set.append(
-                    {
-                        "frame_time": frame_time,
-                        "frame_size": frame_size,
-                        "frame_channel": frame_channel,
-                        "frame_type": frame_type,
-                        "frame_offset": frame_offset,
-                    }
-                )
+                #Modify 203-12-02
+                if len(frame_set) != 0 and frame_time >= frame_set[-1]["frame_time"] + timedelta(seconds=2):
+                    process_frame_set(frame_set, status, block_cnt, 0)
+                    frame_set = [
+                        {
+                            "frame_time": frame_time,
+                            "frame_size": frame_size,
+                            "frame_channel": frame_channel,
+                            "frame_type": frame_type,
+                            "frame_offset": frame_offset,
+                        }
+                    ]
+                else:
+                    frame_set.append(
+                        {
+                            "frame_time": frame_time,
+                            "frame_size": frame_size,
+                            "frame_channel": frame_channel,
+                            "frame_type": frame_type,
+                            "frame_offset": frame_offset,
+                        }
+                    )
                 frame_meta = file.read(32)
                 frame_time = convert_to_datetime(int.from_bytes(frame_meta[0x04:0x08], byteorder='little'))
                 frame_size = int.from_bytes(frame_meta[0x10:0x14], byteorder='little')
@@ -123,17 +136,38 @@ class Allocated_Block_Scan:
                 #print("Block : " + str(block_cnt) + ", ", end='')
                 process_frame_set(frame_set, status, block_cnt, 0)
                 status = 1
-                frame_set = []
+                frame_set = [
+                    {
+                        "frame_time": frame_time,
+                        "frame_size": frame_size,
+                        "frame_channel": frame_channel,
+                        "frame_type": frame_type,
+                        "frame_offset": frame_offset,
+                    }
+                ]
                 while frame_size == 0:
-                    frame_set.append(
-                        {
-                            "frame_time": frame_time,
-                            "frame_size": frame_size,
-                            "frame_channel": frame_channel,
-                            "frame_type": frame_type,
-                            "frame_offset": frame_offset,
-                        }
-                    )
+                    # Modify 203-12-02
+                    if len(frame_set) != 0 and frame_time >= frame_set[-1]["frame_time"] + timedelta(seconds=2):
+                        process_frame_set(frame_set, status, block_cnt, 0)
+                        frame_set = [
+                            {
+                                "frame_time": frame_time,
+                                "frame_size": frame_size,
+                                "frame_channel": frame_channel,
+                                "frame_type": frame_type,
+                                "frame_offset": frame_offset,
+                            }
+                        ]
+                    else:
+                        frame_set.append(
+                            {
+                                "frame_time": frame_time,
+                                "frame_size": frame_size,
+                                "frame_channel": frame_channel,
+                                "frame_type": frame_type,
+                                "frame_offset": frame_offset,
+                            }
+                        )
                     bef_frame_time = frame_time
                     bef_frame_offset = frame_offset
                     frame_meta = file.read(32)
@@ -174,15 +208,28 @@ class Allocated_Block_Scan:
                     bef_frame_time = frame_time
                     bef_frame_offset = frame_offset
                 continue
-            frame_set.append(
-                {
-                    "frame_time": frame_time,
-                    "frame_size": frame_size,
-                    "frame_channel": frame_channel,
-                    "frame_type": frame_type,
-                    "frame_offset": frame_offset,
-                }
-            )
+            # Modify 203-12-02
+            if len(frame_set) != 0 and frame_time >= frame_set[-1]["frame_time"] + timedelta(seconds=2):
+                process_frame_set(frame_set, status, block_cnt, 0)
+                frame_set = [
+                    {
+                        "frame_time": frame_time,
+                        "frame_size": frame_size,
+                        "frame_channel": frame_channel,
+                        "frame_type": frame_type,
+                        "frame_offset": frame_offset,
+                    }
+                ]
+            else:
+                frame_set.append(
+                    {
+                        "frame_time": frame_time,
+                        "frame_size": frame_size,
+                        "frame_channel": frame_channel,
+                        "frame_type": frame_type,
+                        "frame_offset": frame_offset,
+                    }
+                )
             bef_frame_time = frame_time
             bef_frame_offset = frame_offset
         # 부분 삭제(끝)
@@ -199,15 +246,28 @@ class Allocated_Block_Scan:
             frame_type = frame_meta[0x1A]
             frame_offset = int.from_bytes(frame_meta[0x1C:0x20], byteorder='little')
             while frame_set[-1]["frame_time"] <= frame_time:
-                frame_set.append(
-                    {
-                        "frame_time": frame_time,
-                        "frame_size": frame_size,
-                        "frame_channel": frame_channel,
-                        "frame_type": frame_type,
-                        "frame_offset": frame_offset,
-                    }
-                )
+                # Modify 203-12-02
+                if len(frame_set) != 0 and frame_time >= frame_set[-1]["frame_time"] + timedelta(seconds=2):
+                    process_frame_set(frame_set, status, block_cnt, 0)
+                    frame_set = [
+                        {
+                            "frame_time": frame_time,
+                            "frame_size": frame_size,
+                            "frame_channel": frame_channel,
+                            "frame_type": frame_type,
+                            "frame_offset": frame_offset,
+                        }
+                    ]
+                else:
+                    frame_set.append(
+                        {
+                            "frame_time": frame_time,
+                            "frame_size": frame_size,
+                            "frame_channel": frame_channel,
+                            "frame_type": frame_type,
+                            "frame_offset": frame_offset,
+                        }
+                    )
                 bef_frame_time = frame_time
                 bef_frame_offset = frame_offset
                 frame_meta = file.read(32)

@@ -1,4 +1,5 @@
 import binascii
+import os
 import sys
 import struct
 import datetime
@@ -15,15 +16,13 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenuBar, QAction, QTree
 from PyQt5.QtCore import Qt, QSortFilterProxyModel, QTime, QDateTime, QRegExp, pyqtSignal, QSortFilterProxyModel
 import sqlite3
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QRegExpValidator
-#from Extract import Extractor
-
+from Extract_Video import main as extract_main
 
 class CustomSortFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
         super(CustomSortFilterProxyModel, self).__init__(*args, **kwargs)
         self.start_datetime = None
         self.end_datetime = None
-
 
 class UI_main(QMainWindow):
     def __init__(self):  # 생성자
@@ -35,7 +34,7 @@ class UI_main(QMainWindow):
         self.proxy_model.setSourceModel(self.model)
         self.blocktable = QTableView()  # QTableView로 수정
         self.blocktable.setModel(self.proxy_model)
-        self.blocktable.setSortingEnabled(True)  # 체크박스 위해 추가했으나 없어도 정상동작
+        self.blocktable.setSortingEnabled(True)
 
         self.files = {}  # 파일 경로와 트리 항목(ID)을 저장하는 딕셔너리
         self.filename = ""  # 파일 이름을 담을 전역 변수
@@ -92,7 +91,7 @@ class UI_main(QMainWindow):
         self.blocktable.verticalHeader().setVisible(False)  # Hide the vertical header
         mainLayout.addWidget(self.blocktable, 1)  # 일단 1로
 
-        ''' 일단 프리뷰 없앰
+        ''' 프리뷰 없앰
         self.preview = QLabel("Preview")
         mainLayout.addWidget(self.preview, 0) '''
 
@@ -102,15 +101,15 @@ class UI_main(QMainWindow):
         self.hex_offset_header = QLabel("Offset")  # 새로운 QLabel 위젯 생성
         self.hex_offset_header.setStyleSheet("background-color: white")
         self.hex_offset_header.setStyleSheet("color: blue")
-        hexoffsetLayout.addWidget(self.hex_offset_header, 1)  #
+        hexoffsetLayout.addWidget(self.hex_offset_header, 1)
 
         self.hex_offset = QTextEdit()
         self.hex_offset.setStyleSheet("background-color: white")
         self.hex_offset.setStyleSheet("color: blue")
         self.hex_offset.setReadOnly(True)  # 읽기 전용으로 설정 (편집 불가능)
         self.hex_offset.setLineWrapMode(QTextEdit.NoWrap)  # 자동 줄 바꿈 비활성화
-        self.hex_offset.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)  #
-        hexoffsetLayout.addWidget(self.hex_offset, 8)  #
+        self.hex_offset.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        hexoffsetLayout.addWidget(self.hex_offset, 8)
         hexLayout.addLayout(hexoffsetLayout, 2)
 
         # ====================================
@@ -123,8 +122,8 @@ class UI_main(QMainWindow):
         self.hex_display.setStyleSheet("background-color: #CCCCCC")
         self.hex_display.setReadOnly(True)  # 읽기 전용으로 설정 (편집 불가능)
         self.hex_display.setLineWrapMode(QTextBrowser.NoWrap)  # 자동 줄 바꿈 비활성화
-        self.hex_display.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)  #
-        hexdisplayLayout.addWidget(self.hex_display, 8)  #
+        self.hex_display.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        hexdisplayLayout.addWidget(self.hex_display, 8)
         hexLayout.addLayout(hexdisplayLayout, 5)
 
         # ====================================
@@ -137,7 +136,7 @@ class UI_main(QMainWindow):
         self.ascii_display.setStyleSheet("background-color: #CCCCCC")
         self.ascii_display.setReadOnly(True)  # 읽기 전용으로 설정 (편집 불가능)
         self.ascii_display.setLineWrapMode(QTextBrowser.NoWrap)  # 자동 줄 바꿈 비활성화
-        asciiLayout.addWidget(self.ascii_display, 8)  #
+        asciiLayout.addWidget(self.ascii_display, 8)
         hexLayout.addLayout(asciiLayout, 5)
 
         rightLayout.addLayout(hexLayout, 1)
@@ -148,68 +147,17 @@ class UI_main(QMainWindow):
         self.ascii_display.verticalScrollBar().valueChanged.connect(self.on_ascii_display_scroll)
         self._create_menubar()
 
-    # 마우스 우클릭 Extract 기능
-    def context_menu(self, position):
-        menu = QMenu()
-
-        extract_action = menu.addAction("Extract")
-        extract_action.triggered.connect(self.extract_selected_rows)
-
-        # 메뉴 실행
-        menu.exec_(self.blocktable.viewport().mapToGlobal(position))
-
-    # Extract 저장경로 설정
-    def select_output_folder(self):
-        folder_path = QFileDialog.getExistingDirectory(self, "Select Output Folder")
-        if folder_path:
-            return folder_path
-        else:
-            return None
-
-    # Extract 기능
-    def extract_selected_rows(self):
-        # 체크된 항목들을 가져옵니다.
-        checked_indexes = [self.model.item(row, 1).text() for row in range(self.model.rowCount()) if
-                           self.model.item(row, 0).checkState() == Qt.Checked]
-
-        if not checked_indexes:
-            # 체크된 항목이 없으면 메시지를 표시하고 리턴
-            QMessageBox.information(self, "Extract", "No rows selected for extraction.")
-            return
-
-        # 데이터베이스 연결 생성
-        connection = sqlite3.connect('IDIS_FS_sqlite.db')
-        cursor = connection.cursor()
-
-        # 추출할 파일들을 저장할 경로 설정
-        extracted_folder_path = self.select_output_folder()
-        if not extracted_folder_path:
-            return
-
-        #extractor = Extractor(self.filepath, extracted_folder_path)
-
-        # 각 체크된 항목에 대해 처리
-        for index_value in checked_indexes:
-            # 데이터베이스에서 START_OFFSET 및 END_OFFSET 검색
-            query = "SELECT START_OFFSET, END_OFFSET FROM ROOT_SCAN WHERE idx = ?"
-            cursor.execute(query, (index_value,))
-            result = cursor.fetchone()
-
-            if result:
-                start_offset, end_offset = result
-                #extractor.read_at_offset(int(start_offset), int(end_offset))
-
-        # 데이터베이스 연결 종료
-        connection.close()
-
     def _create_menubar(self):
         menubar = self.menuBar()  # 현재 윈도우에 대한 메뉴바 가져옴 / self: 현재 클래스의 인스턴스
 
         # File
         fileMenu = menubar.addMenu('File')
-        loadAction = QAction('Load Image', self)
-        loadAction.triggered.connect(self.open_image)  # Load Image 액션의 트리거 시그널 발생 시 self.open_image 메서드 호출
-        fileMenu.addAction(loadAction)  # "File" 메뉴에 방금 생성한 "Load Image" 액션을 추가
+        caseAction = QAction('New Case', self)
+        caseAction.triggered.connect(self.new_case)  # New Case 액션의 트리거 시그널이 발생 시 self.new_case 메서드 호출
+        loadCAction = QAction('Load Case', self)
+        loadCAction.triggered.connect(self.open_case)  # Load Case 액션의 트리거 시그널이 발생 시 self.open_case 메서드 호출
+        fileMenu.addAction(caseAction)
+        fileMenu.addAction(loadCAction)
 
         # Search
         searchMenu = menubar.addMenu('Search')
@@ -226,14 +174,86 @@ class UI_main(QMainWindow):
         # About
         aboutMenu = menubar.addMenu('About')
 
-    def open_image(self):
+    # ======================= Extract =========================
+    # 마우스 우클릭 Extract
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
+        extract_action = menu.addAction("Extract")
+        extract_action.triggered.connect(self.extract_selected_rows)
+
+        # 메뉴 실행
+        menu.exec_(event.globalPos())
+
+    # Extract 저장 경로 설정
+    def select_output_folder(self):
+        folder_path = QFileDialog.getExistingDirectory(self, "Select Output Folder")
+        if folder_path:
+            return folder_path
+        else:
+            return None
+
+    # Extract 기능
+    def extract_selected_rows(self):
+        # 체크된 항목들의 인덱스를 가져옵니다.
+        checked_indexes = [int(self.model.item(row, 1).text()) for row in range(self.model.rowCount())
+                        if self.model.item(row, 0).checkState() == Qt.Checked]
+
+        if not checked_indexes:
+            QMessageBox.information(self, "Extract", "No rows selected for extraction.")
+            return
+
+        # 현재 스크립트와 동일한 경로에 추출된 비디오를 저장합니다.
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        db_filepath = 'IDIS_FS_sqlite.db'
+        extract_main(db_filepath, filepath, checked_indexes, current_dir)
+
+    # ======================= Case =========================
+    def new_case(self):
+        # 사용자가 생성할 케이스명 입력
+        case_name, ok = QInputDialog.getText(self, 'New Case', '<b>Enter case name</b>  <br>Next, select the path to the case file.')
+        self.casename = case_name  # casename 전역변수 저장
+
+        if not ok or not case_name:
+            return
+
+        # 사용자가 생성할 경로 선택
+        selected_directory = QFileDialog.getExistingDirectory(self, 'Select Directory', os.getcwd())
+
+        if not selected_directory:
+            return
+
+        # 케이스 경로 생성
+        case_directory = os.path.join(selected_directory, case_name)
+
+        if not os.path.exists(case_directory):
+            os.makedirs(case_directory)
+
+            # DB, Export 디렉토리 생성
+            db_directory = os.path.join(case_directory, 'DB')
+            export_directory = os.path.join(case_directory, 'Export')
+
+            os.makedirs(db_directory)
+            os.makedirs(export_directory)
+
+            QMessageBox.information(self, 'Success', f'Case "{case_name}" created successfully at {case_directory}. <br><br><b>Select the image you want to analyze.</b> ')
+
+        else:
+            QMessageBox.warning(self, 'Error', f'Case "{case_name}" already exists at {case_directory}.')
+
+        global filepath
+
         try:
             filepath, _ = QFileDialog.getOpenFileName(self, "Open file", "", "All Files (*)")  # filepath에 경로 저장
+            if not filepath:
+                return
 
+            imgpath_file = os.path.join(case_directory, 'imgpath.case')
+            with open(imgpath_file, 'w') as file:
+                file.write(filepath)
+            QMessageBox.information(self, 'Success', f"File '{case_directory}' created successfully.")
             self.filename = filepath.split("/")[-1]  # 경로에서 파일 이름만 추출해 전역변수 저장
 
-            # 경로 넘기고 객체로 받기
-            rs = Root_Scan(filepath)
+            rs = Root_Scan(filepath)  # Root_Scan()에 경로 넘기고 객체로 받기
 
             if rs.check_file_validation() == 0:  # 파일이 정상적으로 열렸는지 확인
                 print("Invalid G2FDb image file. Exiting.")
@@ -259,102 +279,45 @@ class UI_main(QMainWindow):
 
             db_filepath = './IDIS_FS_sqlite.db'
 
-            self.update_root_scan(filepath)
+            self.update_root_scan(filepath)  # 파일 처리 메서드 호출
             self.show_warning_message(filepath)
 
         except Exception as e:
             print(f"An error occurred in open_image: {e}")
 
+    def open_case(self):
+        # 사용자에게 디렉토리를 선택하도록 요청
+        selected_directory = QFileDialog.getExistingDirectory(self, 'Select Case Directory', os.getcwd())
+        self.casename = selected_directory.split("/")[-1]  # 경로에서 파일 이름만 추출해 전역변수 저장
+
+        if not selected_directory:
+            return
+
+        # 여기에 케이스를 불러오는 추가적인 코드를 작성
+        # selected_directory 변수에 선택한 디렉토리 경로가 들어 있음
+
+        QMessageBox.information(self, 'Success', f'Case loaded from {selected_directory}.')
+
+    # ======================= 1. Root scan =========================
     def update_root_scan(self, filepath):
-        print("again Root_Scan")
+        print("Root_Scan")
 
         self.model.setColumnCount(9)  # 모델에 있는 컬럼 수 설정
         self.model.setHorizontalHeaderLabels(
             ["Check", "Index", "Block", "Channel", "Start Time", "End Time", "Start Offset", "End Offset", "Size"])
-        self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.blocktable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+
+        self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive) # 사용자 조절 가능
+        self.blocktable.horizontalHeader().resizeSection(0, 60)
+        self.blocktable.horizontalHeader().resizeSection(1, 60)
+        self.blocktable.horizontalHeader().resizeSection(2, 60)
+        self.blocktable.horizontalHeader().resizeSection(3, 60)
+        self.blocktable.horizontalHeader().resizeSection(4, 140)
+        self.blocktable.horizontalHeader().resizeSection(5, 140)
 
         db_filepath = './IDIS_FS_sqlite.db'
         self.process_root_scan(db_filepath)  # db 접근 메소드
 
-        # 테이블 상단에 필터링 행 추가
-        for col in range(self.model.columnCount()):  # 모델 열 개수
-            item = QStandardItem("")  # 각 열에 해당하는 새로운 아이템 생성
-            item.setFlags(Qt.ItemIsEditable | Qt.ItemIsEnabled)  # 편집 가능하고 활성화
-            self.model.setItem(0, col, item)  # 모델 첫번째 행에 해당하는 각 열에 아이템 설정
-
-        # 아이템 변경 시 필터링 메소드 호출  사용자가 필터링 행에 값을 입력할 때마다 filtering_method 메소드가 호출되어 필터링이 업데이트
-        self.model.itemChanged.connect(self.filtering_method)  # 모델 내의 아이템이 변경될 때 발생하는 신호입니다. 이 신호는 모델 내의 아이템이 편집되면 발생
-        ###### 이 부분을 엔터키로 바꿔야 할 것 같음. 바뀌자마자 신호가 가서 한 번에 바뀌도록 해야 할 것 같다
-
-    def filtering_method(self):  # 필터링 데이터 전달
-        try:
-            # 필터링 조건을 확인하고 적용합니다.
-            channel_item = self.model.item(0, 3)
-            block_item = self.model.item(0, 2)
-
-            if channel_item is not None and block_item is not None:
-                filter_channel = channel_item.data(Qt.DisplayRole)  # Channel 열의 필터링 조건
-                filter_block = block_item.data(Qt.DisplayRole)  # Block 열의 필터링 조건
-
-                print(f"Filter Channel: {filter_channel}, Filter Block: {filter_block}")
-
-                # 필터링된 데이터를 가져옵니다.
-                self.filtered_data(filter_channel, filter_block)
-            else:
-                print("No item found at (0, 3) or (0, 2) in the model.")
-        except Exception as e:
-            print(f"An exception1 occurred: {e}")
-
-    def filtered_data(self, filter_channel=None, filter_block=None):  # 필터링 데이터 화면에 보여주는
-        try:
-            # SQLite 데이터베이스 연결
-            connection = sqlite3.connect('./IDIS_FS_sqlite.db')
-            cursor = connection.cursor()
-
-            # Channel 및 Block 열에서 filter_channel과 filter_block과 일치하는 행을 가져옴
-            query = f"SELECT * FROM ROOT_SCAN WHERE CH = '{filter_channel}' OR NAME = '{filter_block}'"
-            cursor.execute(query)
-            result = cursor.fetchall()  # 각 행이 result 리스트에 저장됨
-
-            # 시그널 연결 해제
-            self.model.itemChanged.disconnect(self.filtering_method)
-
-            # 결과를 모델에 추가하기 전에 기존 데이터 제거
-            self.model.clear()  # 모델 전체를 비우는 메소드 사용
-
-            self.model.setColumnCount(9)  # 모델에 있는 컬럼 수 설정
-            self.model.setHorizontalHeaderLabels(
-                ["Check", "Index", "Block", "Channel", "Start Time", "End Time", "Start Offset", "End Offset", "Size"])
-            self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-            self.blocktable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-
-            # 결과를 모델에 추가
-            for row in result:
-                self.model.insertRow(self.model.rowCount())  # 새로운 행 삽입
-                checkbox_item = QStandardItem()  # 체크박스 아이템 생성
-                checkbox_item.setCheckable(True)  # 체크 가능하도록 설정
-                self.model.setItem(self.model.rowCount() - 1, 0, checkbox_item)  # 체크박스를 첫 번째 열에 추가
-
-                for col, value in enumerate(row):
-                    item = QStandardItem()  # 항상 문자열이 들어가야
-                    if col == 0 or col == 1:  # index와 name에 대한 값들은 int로 설정
-                        item.setData(int(value), Qt.DisplayRole)  # Qt.DisplayRole: 모델 데이터를 표시할 때 사용
-                    else:
-                        item.setData(value, Qt.DisplayRole)
-                    item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
-                    self.model.setItem(self.model.rowCount() - 1, col + 1, item)  # 체크박스 추가 위해 col + 1
-
-            # 시그널 재연결
-            #self.model.itemChanged.connect(self.filtering_method)
-
-            # 연결 종료
-            connection.close()
-
-        except Exception as e:
-            print(f"An exception2 occurred: {e}")
-
-    def process_root_scan(self, db_filepath, filter_start_datetime=None, filter_end_datetime=None):
+    def process_root_scan(self, db_filepath):
         # SQLite DB와 연결 생성
         connection = sqlite3.connect(db_filepath)
         cursor = connection.cursor()
@@ -367,52 +330,179 @@ class UI_main(QMainWindow):
         # 기존 데이터 제거
         self.model.removeRows(0, self.model.rowCount())
 
+        # 테이블 상단에 필터링 행 추가
+        for col in range(self.model.columnCount()):  # 모델 열 개수
+            item = QStandardItem("")  # 각 열에 해당하는 새로운 아이템 생성
+            item.setFlags(Qt.ItemIsEditable | Qt.ItemIsEnabled)  # 편집 가능하고 활성화
+            self.model.setItem(0, col, item)  # 모델 첫번째 행에 해당하는 각 열에 아이템 설정
+
+        # Filtering 버튼 추가
+        check_button = QPushButton("Filtering")
+        self.blocktable.setIndexWidget(self.model.index(0, 0), check_button)
+        check_button.clicked.connect(self.onFilteringBtnClicked)
+
         for row in rows:
-            row_start_time = QDateTime.fromString(row[3], 'yyyy-MM-dd HH:mm:ss')
+            index = row[0]
+            name = row[1]
+            channel = row[2]
+            start_time = row[3]
+            end_time = row[4]
+            start_offset = row[5]
+            end_offset = row[6]
+            size = row[7]
 
-            # 필터링 조건을 확인하여 데이터를 모델에 추가
-            if not filter_start_datetime or not filter_end_datetime or (
-                    filter_start_datetime <= row_start_time <= filter_end_datetime):
-                index = row[0]
-                name = row[1]
-                channel = row[2]
-                start_time = row[3]
-                end_time = row[4]
-                start_offset = row[5]
-                end_offset = row[6]
-                size = row[7]
+            self.model.insertRow(self.model.rowCount())  # 새로운 행 삽입
+            checkbox_item = QStandardItem()  # 체크박스 아이템 생성
+            checkbox_item.setCheckable(True)  # 체크 가능하도록 설정
+            checkbox_item.setCheckState(Qt.Unchecked)  # 체크 상태 설정
+            checkbox_item.setTextAlignment(Qt.AlignCenter)  # 가운데 정렬 설정
+            self.model.setItem(self.model.rowCount() - 1, 0, checkbox_item)  # 체크박스를 첫 번째 열에 추가
 
-                self.model.insertRow(self.model.rowCount())  # 새로운 행 삽입
-                checkbox_item = QStandardItem()  # 체크박스 아이템 생성
-                checkbox_item.setCheckable(True)  # 체크 가능하도록 설정
-                self.model.setItem(self.model.rowCount() - 1, 0, checkbox_item)  # 체크박스를 첫 번째 열에 추가
-
-                for col, value in enumerate(row):
-                    item = QStandardItem()  # 항상 문자열이 들어가야
-                    if col == 0 or col == 1:  # index와 name에 대한 값들은 int로 설정
-                        item.setData(int(value), Qt.DisplayRole)  # Qt.DisplayRole: 모델 데이터를 표시할 때 사용
-                    else:
-                        item.setData(value, Qt.DisplayRole)
-                    item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
-                    self.model.setItem(self.model.rowCount() - 1, col + 1, item)  # 체크박스 추가 위해 col + 1
+            for col, value in enumerate(row):
+                item = QStandardItem()  # 항상 문자열이 들어가야
+                if col == 0 or col == 1:  # index와 name에 대한 값들은 int로 설정
+                    item.setData(int(value), Qt.DisplayRole)  # Qt.DisplayRole: 모델 데이터를 표시할 때 사용
+                else:
+                    item.setData(value, Qt.DisplayRole)
+                item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
+                item.setTextAlignment(Qt.AlignCenter)
+                self.model.setItem(self.model.rowCount() - 1, col + 1, item)  # 체크박스 추가 위해 col + 1
 
         connection.close()
 
+    # ======================= Filtering =========================
+    # 필터링 트리거
+    def onFilteringBtnClicked(self):
+        print("Filtering button clicked")
+        self.filtering_method()
+
+    # 필터링 데이터 전달
+    def filtering_method(self):
+        try:
+            # 각 0행 1열 아이템 객체 추출
+            index_item = self.model.item(0, 1)
+            block_item = self.model.item(0, 2)
+            channel_item = self.model.item(0, 3)
+            start_time_item = self.model.item(0, 4)
+            end_time_item = self.model.item(0, 5)
+            start_offset_item = self.model.item(0, 6)
+            end_offset_item = self.model.item(0, 7)
+            size_item = self.model.item(0, 8)
+
+            # 실제 데이터 추출
+            filter_index = index_item.data(Qt.DisplayRole)
+            filter_block = block_item.data(Qt.DisplayRole)
+            filter_channel = channel_item.data(Qt.DisplayRole)
+            filter_start_time = start_time_item.data(Qt.DisplayRole)
+            filter_end_time = end_time_item.data(Qt.DisplayRole)
+            filter_start_offset = start_offset_item.data(Qt.DisplayRole)
+            filter_end_offset = end_offset_item.data(Qt.DisplayRole)
+            filter_size = size_item.data(Qt.DisplayRole)
+
+            if filter_block == '' and filter_channel == '' and filter_start_time == '' and filter_end_time == '':
+                pass
+            else:
+                #if filter_start_time == '':
+                    #print("hi")
+                print(f"Block: {filter_block}, Filtered Channel: {filter_channel}, Start time: {filter_start_time}, End time: {filter_end_time}")
+
+                self.filtered_data(filter_block, filter_channel, filter_start_time, filter_end_time)
+
+        except Exception as e:
+            print(f"filtering_method() exception occurred: {e}")
+
+    # 필터링 결과 출력
+    def filtered_data(self, filter_block, filter_channel, filter_start_time, filter_end_time):
+        try:
+            if filter_block == '' and filter_channel == '' and filter_start_time == '' and filter_end_time == '':
+                pass
+            else:
+                # SQLite 데이터베이스 연결
+                connection = sqlite3.connect('./IDIS_FS_sqlite.db')
+                cursor = connection.cursor()
+
+                # Channel 및 Block 열에서 filter_channel과 filter_block과 일치하는 행을 가져옴
+                query = f"SELECT * FROM ROOT_SCAN WHERE"
+                if filter_block != '':
+                    query += f" NAME = '{filter_block}' OR"
+                if filter_channel != '':
+                    query += f" CH = '{filter_channel}' OR"
+                if filter_start_time != '':
+                    query += f" START_TIME LIKE '%{filter_start_time}%' OR"
+                if filter_end_time != '':
+                    query += f" END_TIME LIKE '%{filter_end_time}%' OR"
+                query = query.rstrip(" OR")
+
+                cursor.execute(query)
+                result = cursor.fetchall()  # 각 행이 result 리스트에 저장됨
+
+                # 결과를 모델에 추가하기 전에 기존 데이터 제거
+                self.model.clear()
+
+                self.model.setColumnCount(9)  # 모델에 있는 컬럼 수 설정
+                self.model.setHorizontalHeaderLabels(
+                    ["Check", "Index", "Block", "Channel", "Start Time", "End Time", "Start Offset", "End Offset", "Size"])
+                self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)  # 사용자 조절 가능
+                self.blocktable.horizontalHeader().resizeSection(0, 60)
+                self.blocktable.horizontalHeader().resizeSection(1, 60)
+                self.blocktable.horizontalHeader().resizeSection(2, 60)
+                self.blocktable.horizontalHeader().resizeSection(3, 60)
+                self.blocktable.horizontalHeader().resizeSection(4, 140)
+                self.blocktable.horizontalHeader().resizeSection(5, 140)
+
+                # 테이블 상단에 필터링 행 추가
+                for col in range(self.model.columnCount()):  # 모델 열 개수
+                    item = QStandardItem("")  # 각 열에 해당하는 새로운 아이템 생성
+                    item.setFlags(Qt.ItemIsEditable | Qt.ItemIsEnabled)  # 편집 가능하고 활성화
+                    self.model.setItem(0, col, item)  # 모델 첫번째 행에 해당하는 각 열에 아이템 설정
+
+                # Filtering 버튼 추가
+                Filtering_btn = QPushButton("Filtering")
+                self.blocktable.setIndexWidget(self.model.index(0, 0), Filtering_btn)
+                Filtering_btn.clicked.connect(self.onFilteringBtnClicked)
+
+                # 결과를 모델에 추가
+                for row in result:
+                    self.model.insertRow(self.model.rowCount())  # 새로운 행 삽입
+                    checkbox_item = QStandardItem()  # 체크박스 아이템 생성
+                    checkbox_item.setCheckable(True)  # 체크 가능하도록 설정
+                    self.model.setItem(self.model.rowCount() - 1, 0, checkbox_item)  # 체크박스를 첫 번째 열에 추가
+
+                    for col, value in enumerate(row):
+                        item = QStandardItem()  # 항상 문자열이 들어가야
+                        if col == 0 or col == 1:  # index와 name에 대한 값들은 int로 설정
+                            item.setData(int(value), Qt.DisplayRole)  # Qt.DisplayRole: 모델 데이터를 표시할 때 사용
+                        else:
+                            item.setData(value, Qt.DisplayRole)
+                        item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
+                        item.setTextAlignment(Qt.AlignCenter)
+                        self.model.setItem(self.model.rowCount() - 1, col + 1, item)  # 체크박스 추가 위해 col + 1
+
+        except Exception as e:
+            print(f"filtered_data() exception occurred: {e}")
+
+    # ======================= 2. Precise scan =========================
     def update_precise_scan(self):
-        print("update_precise scan")
+        print("update_precise scan()")
 
         self.model.clear()
         self.model.setColumnCount(15)  # 모델에 있는 컬럼 수 설정
         self.model.setHorizontalHeaderLabels(
             ["Check", "Index", "Name", "Block", "Channel", "Start Time", "End Time", "Duration", "Start Offset",
              "End Offset", "Size", "Del Type", "I-Frame", "P-Frame", "삭제 여부"])
-        self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)  # 사용자 조절 가능
         self.blocktable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.blocktable.horizontalHeader().resizeSection(1, 60)
+        self.blocktable.horizontalHeader().resizeSection(2, 60)
+        self.blocktable.horizontalHeader().resizeSection(3, 60)
+        self.blocktable.horizontalHeader().resizeSection(4, 60)
+        self.blocktable.horizontalHeader().resizeSection(5, 140)
+        self.blocktable.horizontalHeader().resizeSection(6, 140)
 
         db_filepath = './IDIS_FS_sqlite.db'
         self.process_precise_scan(db_filepath)  # db 접근 메소드
 
-    def process_precise_scan(self, db_filepath, filter_start_datetime=None, filter_end_datetime=None):
+    def process_precise_scan(self, db_filepath):
         # SQLite DB와 연결 생성
         connection = sqlite3.connect(db_filepath)
         cursor = connection.cursor()
@@ -420,7 +510,7 @@ class UI_main(QMainWindow):
         # PRECISE_SCAN 테이블 데이터 검색
         query = "SELECT * FROM PRECISE_SCAN"
         cursor.execute(query)
-        rows = cursor.fetchall()  # 각 행이 rows 리스트에 저장됨
+        rows = cursor.fetchall()  # 각 행 rows 리스트에 저장
 
         # 기존 데이터 제거
         self.model.removeRows(0, self.model.rowCount())
@@ -450,19 +540,198 @@ class UI_main(QMainWindow):
                 item = QStandardItem()
                 if col == 0 or col == 2:  # index와 name에 대한 값들은 int로 설정
                     item.setData(int(value), Qt.DisplayRole)  # Qt.DisplayRole: 모델 데이터를 표시할 때 사용
+                elif col == 10: # del_type 매칭
+                    if value == 0:
+                        output_text = '할당'
+                    elif value == 1:
+                        output_text = '부분 삭제'
+                    elif value == 2:
+                        output_text = '모든 데이터 삭제'
+                    elif value == 3:
+                        output_text = '포맷'
+                    elif value == 4:
+                        output_text = '슬랙'
+                    else:
+                        output_text = '알 수 없음'
+                    item.setData(output_text, Qt.DisplayRole)
                 else:
                     item.setData(value, Qt.DisplayRole)
+
                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
+                item.setTextAlignment(Qt.AlignCenter)
                 self.model.setItem(self.model.rowCount() - 1, col + 1, item)  # 체크박스 추가 위해 col + 1
 
         connection.close()
 
+    # ======================= 3. Allocated =========================
     def update_allocated(self):
-        pass
+        print("update_allocated")
 
+        self.model.clear()
+        self.model.setColumnCount(15)  # 모델에 있는 컬럼 수 설정
+        self.model.setHorizontalHeaderLabels(
+            ["Check", "Index", "Name", "Block", "Channel", "Start Time", "End Time", "Duration", "Start Offset",
+             "End Offset", "Size", "Del Type", "I-Frame", "P-Frame", "삭제 여부"])
+        self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)  # 사용자 조절 가능
+        self.blocktable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.blocktable.horizontalHeader().resizeSection(1, 60)
+        self.blocktable.horizontalHeader().resizeSection(2, 60)
+        self.blocktable.horizontalHeader().resizeSection(3, 60)
+        self.blocktable.horizontalHeader().resizeSection(4, 60)
+        self.blocktable.horizontalHeader().resizeSection(5, 140)
+        self.blocktable.horizontalHeader().resizeSection(6, 140)
+
+        db_filepath = './IDIS_FS_sqlite.db'
+        self.process_allocated(db_filepath)  # db 접근 메소드
+
+    def process_allocated(self, db_filepath, filter_start_datetime=None, filter_end_datetime=None):
+        try:
+            # SQLite DB와 연결 생성
+            connection = sqlite3.connect(db_filepath)
+            cursor = connection.cursor()
+
+            # PRECISE_SCAN - is_it_del이 0인 행만 추출
+            query = f"SELECT * FROM PRECISE_SCAN WHERE IS_IT_DEL = 0"
+            cursor.execute(query)
+            rows = cursor.fetchall()  # 각 행이 rows 리스트에 저장됨
+
+            for row in rows:
+                index = row[0]
+                name = row[1]
+                block = row[2]
+                channel = row[3]
+                start_time = row[4]
+                end_time = row[5]
+                duration = row[6]
+                start_offset = row[7]
+                end_offset = row[8]
+                size = row[9]
+                del_type = row[10]
+                i_frame = row[11]
+                p_frame = row[12]
+                is_it_del = row[13]
+
+                self.model.insertRow(self.model.rowCount())  # 새로운 행 삽입
+                checkbox_item = QStandardItem()  # 체크박스 아이템 생성
+                checkbox_item.setCheckable(True)  # 체크 가능하도록 설정
+                self.model.setItem(self.model.rowCount() - 1, 0, checkbox_item)  # 체크박스를 첫 번째 열에 추가
+
+                for col, value in enumerate(row):
+                    item = QStandardItem()
+                    if col == 0 or col == 2:  # index와 name에 대한 값들은 int로 설정
+                        item.setData(int(value), Qt.DisplayRole)  # Qt.DisplayRole: 모델 데이터를 표시할 때 사용
+                    elif col == 10:  # del_type 매칭
+                        if value == 0:
+                            output_text = '할당'
+                        elif value == 1:
+                            output_text = '부분 삭제'
+                        elif value == 2:
+                            output_text = '모든 데이터 삭제'
+                        elif value == 3:
+                            output_text = '포맷'
+                        elif value == 4:
+                            output_text = '슬랙'
+                        else:
+                            output_text = '알 수 없음'
+                        item.setData(output_text, Qt.DisplayRole)
+                    else:
+                        item.setData(value, Qt.DisplayRole)
+                    item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
+                    item.setTextAlignment(Qt.AlignCenter)
+                    self.model.setItem(self.model.rowCount() - 1, col + 1, item)  # 체크박스 추가 위해 col + 1
+
+            connection.close()
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            import traceback
+            traceback.print_exc()
+
+    # ======================= 4. Unallocated =========================
     def update_unallocated(self):
-        pass
+        print("update_allocated")
 
+        self.model.clear()
+        self.model.setColumnCount(15)  # 모델에 있는 컬럼 수 설정
+        self.model.setHorizontalHeaderLabels(
+            ["Check", "Index", "Name", "Block", "Channel", "Start Time", "End Time", "Duration", "Start Offset",
+             "End Offset", "Size", "Del Type", "I-Frame", "P-Frame", "삭제 여부"])
+        self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)  # 사용자 조절 가능
+        self.blocktable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.blocktable.horizontalHeader().resizeSection(1, 60)
+        self.blocktable.horizontalHeader().resizeSection(2, 60)
+        self.blocktable.horizontalHeader().resizeSection(3, 60)
+        self.blocktable.horizontalHeader().resizeSection(4, 60)
+        self.blocktable.horizontalHeader().resizeSection(5, 140)
+        self.blocktable.horizontalHeader().resizeSection(6, 140)
+
+        db_filepath = './IDIS_FS_sqlite.db'
+        self.process_unallocated(db_filepath)  # db 접근 메소드
+
+    def process_unallocated(self, db_filepath):
+        try:
+            # SQLite DB와 연결 생성
+            connection = sqlite3.connect(db_filepath)
+            cursor = connection.cursor()
+
+            # PRECISE_SCAN - is_it_del이 0인 행만 추출
+            query = f"SELECT * FROM PRECISE_SCAN WHERE IS_IT_DEL = 1"
+            cursor.execute(query)
+            rows = cursor.fetchall()  # 각 행이 rows 리스트에 저장됨
+
+            for row in rows:
+                index = row[0]
+                name = row[1]
+                block = row[2]
+                channel = row[3]
+                start_time = row[4]
+                end_time = row[5]
+                duration = row[6]
+                start_offset = row[7]
+                end_offset = row[8]
+                size = row[9]
+                del_type = row[10]
+                i_frame = row[11]
+                p_frame = row[12]
+                is_it_del = row[13]
+
+                self.model.insertRow(self.model.rowCount())  # 새로운 행 삽입
+                checkbox_item = QStandardItem()  # 체크박스 아이템 생성
+                checkbox_item.setCheckable(True)  # 체크 가능하도록 설정
+                self.model.setItem(self.model.rowCount() - 1, 0, checkbox_item)  # 체크박스를 첫 번째 열에 추가
+
+                for col, value in enumerate(row):
+                    item = QStandardItem()
+                    if col == 0 or col == 2:  # index와 name에 대한 값들은 int로 설정
+                        item.setData(int(value), Qt.DisplayRole)  # Qt.DisplayRole: 모델 데이터를 표시할 때 사용
+                    elif col == 10:  # del_type 매칭
+                        if value == 0:
+                            output_text = '할당'
+                        elif value == 1:
+                            output_text = '부분 삭제'
+                        elif value == 2:
+                            output_text = '모든 데이터 삭제'
+                        elif value == 3:
+                            output_text = '포맷'
+                        elif value == 4:
+                            output_text = '슬랙'
+                        else:
+                            output_text = '알 수 없음'
+                        item.setData(output_text, Qt.DisplayRole)
+                    else:
+                        item.setData(value, Qt.DisplayRole)
+                    item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
+                    item.setTextAlignment(Qt.AlignCenter)
+                    self.model.setItem(self.model.rowCount() - 1, col + 1, item)  # 체크박스 추가 위해 col + 1
+
+            connection.close()
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            import traceback
+            traceback.print_exc()
+
+    # ======================= Log =========================
     def update_log(self):
         pass
 
@@ -483,8 +752,6 @@ class UI_main(QMainWindow):
                     print("filename selected: " + list(self.files.keys())[0])
 
                 elif selected_name == "Precise Scan":
-                    # itemChanged 시그널을 차단
-                    self.model.itemChanged.disconnect()
                     self.update_precise_scan()
 
                 elif selected_name == "Allocated":
@@ -503,6 +770,7 @@ class UI_main(QMainWindow):
             # 아무 항목도 선택하지 않은 경우 처리
             pass
 
+    # ======================= Hex Window =========================
     def format_hex_lines(self, hex_value):
         hex_lines = textwrap.wrap(hex_value, 32)  # textwrap.wrap을 사용하여 hex 문자열을 32자씩 분할하여 리스트 생성
         formatted_hex_lines = [' '.join(line[i:i + 2] for i in range(0, len(line), 2)) for line in hex_lines]
@@ -544,6 +812,7 @@ class UI_main(QMainWindow):
         # Set the value of the hex_offset scrollbar to match ascii_display
         self.hex_offset.verticalScrollBar().setValue(ascii_display_scroll_value)
 
+    #======================= Warning =========================
     def show_warning_message(self, filepath):
         # Add a warning message
         warning_message = QMessageBox()
@@ -613,7 +882,6 @@ class UI_main(QMainWindow):
             print("No button clicked.")
         else:
             print("Unknown button clicked.")
-
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)  # PyQt 애플리케이션 시작위해 PyQt의 QApplication 클래스를 인스턴스화

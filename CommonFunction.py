@@ -16,7 +16,7 @@ def convert_to_datetime(time_info):
     except ValueError:
         return 0  # 파일을 찾을 수 없을 때 0을 반환
 
-def process_frame_set(frame_set, status, block_cnt, AU):
+def process_frame_set(frame_set, status, block_cnt, AU):#AU는 할당/비할당
     # Process and organize the complete set of frames
     base = 0x80100000 + 0x10000000 * block_cnt + 0x500000
     start_time = frame_set[0]["frame_time"]

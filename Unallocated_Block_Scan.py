@@ -43,15 +43,28 @@ class Unallocated_Block_Scan:
             frame_type = frame_meta[0x1A]
             frame_offset = int.from_bytes(frame_meta[0x1C:0x20], byteorder='little')
             while frame_time != block_start_time:
-                frame_set.append(
-                    {
-                        "frame_time": frame_time,
-                        "frame_size": frame_size,
-                        "frame_channel": frame_channel,
-                        "frame_type": frame_type,
-                        "frame_offset": frame_offset,
-                    }
-                )
+                # Modify 203-12-02
+                if len(frame_set) != 0 and frame_time >= frame_set[-1]["frame_time"] + timedelta(seconds=2):
+                    process_frame_set(frame_set, status, block_cnt, 0)
+                    frame_set = [
+                        {
+                            "frame_time": frame_time,
+                            "frame_size": frame_size,
+                            "frame_channel": frame_channel,
+                            "frame_type": frame_type,
+                            "frame_offset": frame_offset,
+                        }
+                    ]
+                else:
+                    frame_set.append(
+                        {
+                            "frame_time": frame_time,
+                            "frame_size": frame_size,
+                            "frame_channel": frame_channel,
+                            "frame_type": frame_type,
+                            "frame_offset": frame_offset,
+                        }
+                    )
                 frame_meta = file.read(32)
                 frame_time = convert_to_datetime(int.from_bytes(frame_meta[0x04:0x08], byteorder='little'))
                 frame_size = int.from_bytes(frame_meta[0x10:0x14], byteorder='little')
@@ -126,15 +139,28 @@ class Unallocated_Block_Scan:
                 status = 1
                 frame_set = []
                 while frame_size == 0:
-                    frame_set.append(
-                        {
-                            "frame_time": frame_time,
-                            "frame_size": frame_size,
-                            "frame_channel": frame_channel,
-                            "frame_type": frame_type,
-                            "frame_offset": frame_offset,
-                        }
-                    )
+                    # Modify 203-12-02
+                    if len(frame_set) != 0 and frame_time >= frame_set[-1]["frame_time"] + timedelta(seconds=2):
+                        process_frame_set(frame_set, status, block_cnt, 0)
+                        frame_set = [
+                            {
+                                "frame_time": frame_time,
+                                "frame_size": frame_size,
+                                "frame_channel": frame_channel,
+                                "frame_type": frame_type,
+                                "frame_offset": frame_offset,
+                            }
+                        ]
+                    else:
+                        frame_set.append(
+                            {
+                                "frame_time": frame_time,
+                                "frame_size": frame_size,
+                                "frame_channel": frame_channel,
+                                "frame_type": frame_type,
+                                "frame_offset": frame_offset,
+                            }
+                        )
                     bef_frame_time = frame_time
                     bef_frame_offset = frame_offset
                     frame_meta = file.read(32)
@@ -176,15 +202,28 @@ class Unallocated_Block_Scan:
                     bef_frame_offset = frame_offset
                 status = 0
                 continue
-            frame_set.append(
-                {
-                    "frame_time": frame_time,
-                    "frame_size": frame_size,
-                    "frame_channel": frame_channel,
-                    "frame_type": frame_type,
-                    "frame_offset": frame_offset,
-                }
-            )
+            # Modify 203-12-02
+            if len(frame_set) != 0 and frame_time >= frame_set[-1]["frame_time"] + timedelta(seconds=2):
+                process_frame_set(frame_set, status, block_cnt, 0)
+                frame_set = [
+                    {
+                        "frame_time": frame_time,
+                        "frame_size": frame_size,
+                        "frame_channel": frame_channel,
+                        "frame_type": frame_type,
+                        "frame_offset": frame_offset,
+                    }
+                ]
+            else:
+                frame_set.append(
+                    {
+                        "frame_time": frame_time,
+                        "frame_size": frame_size,
+                        "frame_channel": frame_channel,
+                        "frame_type": frame_type,
+                        "frame_offset": frame_offset,
+                    }
+                )
             bef_frame_time = frame_time
             bef_frame_offset = frame_offset
         # 부분 삭제(끝)
@@ -202,15 +241,28 @@ class Unallocated_Block_Scan:
             frame_type = frame_meta[0x1A]
             frame_offset = int.from_bytes(frame_meta[0x1C:0x20], byteorder='little')
             while frame_set[-1]["frame_time"] <= frame_time:
-                frame_set.append(
-                    {
-                        "frame_time": frame_time,
-                        "frame_size": frame_size,
-                        "frame_channel": frame_channel,
-                        "frame_type": frame_type,
-                        "frame_offset": frame_offset,
-                    }
-                )
+                # Modify 203-12-02
+                if len(frame_set) != 0 and frame_time >= frame_set[-1]["frame_time"] + timedelta(seconds=2):
+                    process_frame_set(frame_set, status, block_cnt, 0)
+                    frame_set = [
+                        {
+                            "frame_time": frame_time,
+                            "frame_size": frame_size,
+                            "frame_channel": frame_channel,
+                            "frame_type": frame_type,
+                            "frame_offset": frame_offset,
+                        }
+                    ]
+                else:
+                    frame_set.append(
+                        {
+                            "frame_time": frame_time,
+                            "frame_size": frame_size,
+                            "frame_channel": frame_channel,
+                            "frame_type": frame_type,
+                            "frame_offset": frame_offset,
+                        }
+                    )
                 frame_meta = file.read(32)
                 if int.from_bytes(frame_meta[:32]) == 0x00:
                     #print("Block : " + str(block_cnt) + ", ", end='')
@@ -274,6 +326,7 @@ class Unallocated_Block_Scan:
 #이전 블록의 시작과 끝 시간정보 들고 있기
 #이전 블록의 시작 시간정보보다 더 과거의 시간정보를 지니고 있는 프레임이 등장할 때까지 버리기
     def slack(self, block_cnt, start_frame_time, end_frame_time, end_frame_offset, file):
+        return
         frame_set = []
         bef_frame_time = 0
         bef_frame_offset = 0
@@ -336,7 +389,96 @@ class Unallocated_Block_Scan:
                     }
                 )
 
-    #def new_slack(self):
-    #    sps_sig = b'\x00\x00\x01\x67'
-    #    p_frame_sig = b'\x00\x00\x01\x21'
+    def new_slack(self, slack_start_offset, block_cnt, ch, file):
+        i_frame_sig = b'\x00\x00\x00\x01\x65'
+        p_frame_sig = b'\x00\x00\x00\x01\x21'
 
+        known_frame_set = []
+        unknown_frame_set = []
+
+        slack_end_offset = (block_cnt + 1) * 0x10000000 + 0x80100000
+
+        file.seek(slack_start_offset, 0)
+        slack_data = file.read(slack_end_offset - slack_start_offset)
+
+        frame_sig_offsets = []
+        frame_type_mapping = {b'\x00\x00\x00\x01\x65': 0, b'\x00\x00\x00\x01\x21': 1}
+
+
+        for frame_type, frame_type_value in frame_type_mapping.items():
+            index = 0
+
+            while True:
+                index = slack_data.find(frame_type, index)
+
+                if index == -1:
+                    break
+
+                frame_sig_offsets.append((slack_start_offset + index, frame_type_value))
+                index += 1
+
+        sorted_frame_sig_offset = sorted(frame_sig_offsets, key=lambda x: x[0])
+
+
+        for i in range(len(sorted_frame_sig_offset)):
+            if sorted_frame_sig_offset[i][1] == 0:
+                frame_meta = slack_data[sorted_frame_sig_offset[i][0] - slack_start_offset - 0xDB: sorted_frame_sig_offset[i][0] - slack_start_offset + 0x20]
+                frame_time = convert_to_datetime(int.from_bytes(frame_meta[0x04:0x08], byteorder='little'))
+                frame_size = int.from_bytes(frame_meta[0x10:0x14], byteorder='little')
+                frame_channel = frame_meta[0x18]
+                frame_type = frame_meta[0x1A]
+                frame_offset = int.from_bytes(frame_meta[0x1C:0x20], byteorder='little')
+                if (
+                    frame_time != 0 and
+                    frame_offset == sorted_frame_sig_offset[i][0] - 0x806000DB - (block_cnt * 0x10000000) and
+                    #frame_time < last_frame_time and
+                    frame_type == 0 and
+                    0 <= frame_channel <= ch and
+                    0 <= frame_size <= (slack_end_offset - sorted_frame_sig_offset[i][0])
+                ):
+                    known_frame_set.append(
+                        {
+                            "real_frame_offset": sorted_frame_sig_offset[i][0] - 0x17,
+                            "frame_time": frame_time,
+                            "frame_size": frame_size,
+                            "frame_channel": frame_channel,
+                            "frame_type": frame_type,
+                            "frame_offset": frame_offset,
+                        }
+                    )
+                else:
+                    if i == len(sorted_frame_sig_offset) - 1:
+                        unknown_frame_set.append((sorted_frame_sig_offset[i][0], slack_end_offset - 1))
+                    else:
+                        unknown_frame_set.append((sorted_frame_sig_offset[i][0], sorted_frame_sig_offset[i + 1][0] - sorted_frame_sig_offset[i][0]))
+            elif sorted_frame_sig_offset[i][1] == 1:
+                frame_meta = slack_data[sorted_frame_sig_offset[i][0] - slack_start_offset - 0xC4: sorted_frame_sig_offset[i][0] - slack_start_offset + 0x20]
+                frame_time = convert_to_datetime(int.from_bytes(frame_meta[0x04:0x08], byteorder='little'))
+                frame_size = int.from_bytes(frame_meta[0x10:0x14], byteorder='little')
+                frame_channel = frame_meta[0x18]
+                frame_type = frame_meta[0x1A]
+                frame_offset = int.from_bytes(frame_meta[0x1C:0x20], byteorder='little')
+                if (
+                        frame_time != 0 and
+                        frame_offset == sorted_frame_sig_offset[i][0] - 0x806000C4 - (block_cnt * 0x10000000) and
+                        # frame_time < last_frame_time and
+                        frame_type == 1 and
+                        0 <= frame_channel <= ch and
+                        0 <= frame_size <= (slack_end_offset - sorted_frame_sig_offset[i][0])
+                ):
+                    known_frame_set.append(
+                        {
+                            "real_frame_offset": sorted_frame_sig_offset[i][0],
+                            "frame_time": frame_time,
+                            "frame_size": frame_size,
+                            "frame_channel": frame_channel,
+                            "frame_type": frame_type,
+                            "frame_offset": frame_offset,
+                        }
+                    )
+                else:
+                    if i == len(sorted_frame_sig_offset) - 1:
+                        unknown_frame_set.append((sorted_frame_sig_offset[i][0], slack_end_offset - 1))
+                    else:
+                        unknown_frame_set.append((sorted_frame_sig_offset[i][0],
+                                                  sorted_frame_sig_offset[i + 1][0] - sorted_frame_sig_offset[i][0]))
