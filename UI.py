@@ -206,7 +206,7 @@ class UI_main(QMainWindow):
 
         # 현재 스크립트와 동일한 경로에 추출된 비디오를 저장합니다.
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        db_filepath = '../IDIS_FS_sqlite.db'
+        db_filepath = './IDIS_FS_sqlite.db'
         extract_main(db_filepath, filepath, checked_indexes, current_dir)
 
     # ======================= Case =========================
@@ -279,7 +279,7 @@ class UI_main(QMainWindow):
                     self.update_hex_offset(formatted_hex_lines)
                     self.display_ascii(formatted_hex_lines)
 
-            db_filepath = '../IDIS_FS_sqlite.db'
+            db_filepath = './IDIS_FS_sqlite.db'
 
             self.update_root_scan(filepath)  # 파일 처리 메서드 호출
             self.show_warning_message(filepath)
@@ -333,7 +333,7 @@ class UI_main(QMainWindow):
                     self.update_hex_offset(formatted_hex_lines)
                     self.display_ascii(formatted_hex_lines)
 
-            db_filepath = '../IDIS_FS_sqlite.db'
+            db_filepath = './IDIS_FS_sqlite.db'
 
             self.update_root_scan(imgpath)  # 파일 처리 메서드 호출
             self.show_warning_message(imgpath)
@@ -362,7 +362,7 @@ class UI_main(QMainWindow):
         self.blocktable.horizontalHeader().resizeSection(4, 140)
         self.blocktable.horizontalHeader().resizeSection(5, 140)
 
-        db_filepath = '../IDIS_FS_sqlite.db'
+        db_filepath = './IDIS_FS_sqlite.db'
         self.process_root_scan(db_filepath)  # db 접근 메소드
 
     def process_root_scan(self, db_filepath):
@@ -466,7 +466,7 @@ class UI_main(QMainWindow):
                 pass
             else:
                 # SQLite 데이터베이스 연결
-                connection = sqlite3.connect('../IDIS_FS_sqlite.db')
+                connection = sqlite3.connect('./IDIS_FS_sqlite.db')
                 cursor = connection.cursor()
 
                 # Channel 및 Block 열에서 filter_channel과 filter_block과 일치하는 행을 가져옴
@@ -547,7 +547,7 @@ class UI_main(QMainWindow):
         self.blocktable.horizontalHeader().resizeSection(5, 140)
         self.blocktable.horizontalHeader().resizeSection(6, 140)
 
-        db_filepath = '../IDIS_FS_sqlite.db'
+        db_filepath = './IDIS_FS_sqlite.db'
         self.process_precise_scan(db_filepath)  # db 접근 메소드
 
     def process_precise_scan(self, db_filepath):
@@ -629,7 +629,7 @@ class UI_main(QMainWindow):
         self.blocktable.horizontalHeader().resizeSection(5, 140)
         self.blocktable.horizontalHeader().resizeSection(6, 140)
 
-        db_filepath = '../IDIS_FS_sqlite.db'
+        db_filepath = './IDIS_FS_sqlite.db'
         self.process_allocated(db_filepath)  # db 접근 메소드
 
     def process_allocated(self, db_filepath, filter_start_datetime=None, filter_end_datetime=None):
@@ -713,7 +713,7 @@ class UI_main(QMainWindow):
         self.blocktable.horizontalHeader().resizeSection(5, 140)
         self.blocktable.horizontalHeader().resizeSection(6, 140)
 
-        db_filepath = '../IDIS_FS_sqlite.db'
+        db_filepath = './IDIS_FS_sqlite.db'
         self.process_unallocated(db_filepath)  # db 접근 메소드
 
     def process_unallocated(self, db_filepath):
@@ -795,7 +795,7 @@ class UI_main(QMainWindow):
                 #item.setText(0, self.filename)  # 파일 이름을 트리에 추가
                 #self.files[logfilepath] = item  # self.files 딕셔너리에 경로(키)와 해당 트리 뷰 항목(값) 저장
 
-            db_filepath = '../IDIS_FS_sqlite.db'
+            db_filepath = './IDIS_FS_sqlite.db'
             self.update_log(db_filepath)  # 로그 처리 메서드 호출
             self.show_warning_message_log(logfilepath)
 
@@ -815,7 +815,7 @@ class UI_main(QMainWindow):
             self.blocktable.horizontalHeader().resizeSection(1, 250)
             self.blocktable.horizontalHeader().resizeSection(2, 140)
 
-            db_filepath = '../IDIS_FS_sqlite.db'
+            db_filepath = './IDIS_FS_sqlite.db'
             self.process_log_list(db_filepath)  # db 리스트 생성
             self.process_log_graph(db_filepath)  # db 그래프 생성
         except Exception as e:
