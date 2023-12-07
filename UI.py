@@ -19,6 +19,7 @@ import sqlite3
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QRegExpValidator, QPainter
 from Extract_Video import main as extract_main
 from LogParser import LogParser
+from Log_Association import Association
 from PyQt5.QtChart import QChart, QBarSet, QBarSeries, QChartView, QLineSeries, QDateTimeAxis, QValueAxis, QBarCategoryAxis
 from PyQt5.QtCore import QDate
 
@@ -45,6 +46,8 @@ class UI_main(QMainWindow):
 
         self.files = {}  # 파일 경로와 트리 항목(ID)을 저장하는 딕셔너리
         self.filename = ""  # 파일 이름을 담을 전역 변수
+
+        #self.logfilepath = ""
 
         self.init_ui()  # ui 실행 함수 호출
 
@@ -785,12 +788,12 @@ class UI_main(QMainWindow):
             import traceback
             traceback.print_exc()
 
-    # ======================= Log =========================
+    # ======================= 5. Log =========================
     def open_logfile(self):
         try:
             logfilepath, _ = QFileDialog.getOpenFileName(self, "Open log file", "", "All Files (*)")  # filepath에 경로 저장
 
-            #self.logfilepath = logfilepath.split("/")[-1]  # 경로에서 파일 이름만 추출해 전역변수 저장
+            # self.logfilepath = logfilepath.split("/")[-1]  # 경로에서 파일 이름만 추출해 전역변수 저장
 
             if logfilepath:
                 log = LogParser(logfilepath)  # LogParser()에 경로 넘기고 객체로 받기
@@ -799,7 +802,7 @@ class UI_main(QMainWindow):
 
             db_filepath = './IDIS_FS_sqlite.db'
             self.update_log(db_filepath)  # 로그 처리 메서드 호출
-            self.show_warning_message_log(logfilepath)
+            self.show_warning_message_log(db_filepath)
 
         except Exception as e:
             print(f"An error occurred in open_logfile: {e}")
@@ -957,7 +960,7 @@ class UI_main(QMainWindow):
             # 모든 데이터 처리
             for row_index, row in enumerate(rows):
                 for col, value in enumerate(row):
-                    print(f"Processing column {col}: {value}")
+                    #print(f"Processing column {col}: {value}")
                     item = QStandardItem()
                     if col == 0:  # index -> int
                         item.setData(int(value), Qt.DisplayRole)  # Qt.DisplayRole: 모델 데이터를 표시할 때 사용
@@ -993,6 +996,63 @@ class UI_main(QMainWindow):
             else:
                 self.clear_layout(item.layout())
 
+    # ======================= 6. Associated scan =========================
+    def update_associated_scan(self):
+        try:
+            print("update_associated_scan()")
+
+            # 리스트
+            self.model.clear()
+            self.model.setColumnCount(15)  # 모델 컬럼 수 설정
+            self.model.setHorizontalHeaderLabels(
+                ["Index", "Event", "Block", "Channel", "Start time", "End time", "Duration", "Start offset",
+                 "End offset", "Size", "Del type", "I-frame", "P-frame", "Is it del", "Association type"])
+            self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)  # 사용자 조절 가능
+            self.blocktable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+            self.blocktable.horizontalHeader().resizeSection(0, 60)
+            self.blocktable.horizontalHeader().resizeSection(1, 250)
+            self.blocktable.horizontalHeader().resizeSection(4, 140)
+            self.blocktable.horizontalHeader().resizeSection(5, 140)
+
+            db_filepath = './IDIS_FS_sqlite.db'
+            self.process_associated_scan(db_filepath)  # db 접근
+
+        except Exception as e:
+            print(f"An error occurred in update_associated_scan(): {e}")
+
+    def process_associated_scan(self, db_filepath):
+        try:
+            print("process_associated_scan()")
+
+            connection = sqlite3.connect(db_filepath)
+            cursor = connection.cursor()
+
+            # LOG 테이블 데이터 검색
+            query = "SELECT * FROM ASSOCIATION"
+            cursor.execute(query)
+            rows = cursor.fetchall()  # 각 행 rows 리스트에 저장
+            #print(rows)
+
+            # 기존 데이터 제거
+            self.model.removeRows(0, self.model.rowCount())
+
+            # 모든 데이터 처리
+            for row_index, row in enumerate(rows):
+                for col, value in enumerate(row):
+                    #print(f"Processing column {col}: {value}")
+                    item = QStandardItem()
+                    if col == 0:  # index -> int
+                        item.setData(int(value), Qt.DisplayRole)  # Qt.DisplayRole: 모델 데이터를 표시할 때 사용
+                    else:
+                        item.setData(value, Qt.DisplayRole)
+
+                    item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
+                    item.setTextAlignment(Qt.AlignCenter)
+                    self.model.setItem(row_index, col, item)
+
+            connection.close()
+        except Exception as e:
+            print(f"An error occurred in process_associated_scan(): {e}")
 
     # ======================= Tree =========================
     def on_tree_select(self):
@@ -1018,6 +1078,9 @@ class UI_main(QMainWindow):
 
                 elif selected_name == "Log":
                     self.open_logfile() # 최초만 !
+
+                elif selected_name == "Associated Scan":
+                    self.update_associated_scan()
 
             except Exception as e:
                 print(f"An error occurred in on_tree_select: {e}")
@@ -1131,7 +1194,7 @@ class UI_main(QMainWindow):
         else:
             print("User clicked No. Cancelling precise scan.")
 
-    def show_warning_message_log(self, filepath):
+    def show_warning_message_log(self, db_filepath):
         # Add a warning message
         warning_message = QMessageBox()
         warning_message.setIcon(QMessageBox.Warning)
@@ -1146,32 +1209,24 @@ class UI_main(QMainWindow):
         # 실행
         result = warning_message.exec_()
 
-        # 실행 후 일단 트리에 추가 이후 활성화 or 비활성화
         # 트리에 파일 이름이 존재하는지 확인
-        filename = filepath.split("/")[-1]
-        items_with_filename = self.tree.findItems(filename, Qt.MatchExactly, 0)
-        print(items_with_filename)
-
+        items_with_filename = self.tree.findItems(self.filename, Qt.MatchExactly, 0)
         selected_item = items_with_filename[0]
 
-        # Create Allocated and Unallocated items
+        # 트리 아이템 추가
         associated_item = QTreeWidgetItem()
+        associated_item.setText(0, "Associated Scan")
 
-        # Set text for Allocated and Unallocated items
-        associated_item.setText(0, "Associated scan")
-
-        # Add Allocated and Unallocated items to the tree
         selected_item.addChild(associated_item)
-
-        # Expand the selected item to show the new children
         selected_item.setExpanded(True)
 
         QApplication.processEvents()  # Force UI to update instantly
 
         if result == QMessageBox.Yes:
             print("User clicked Yes. Proceeding with associated scan.")
-            # ps = Scan(filepath)  # 연관분석 추가해야
-            # ps.analyzer()  # db 생성
+            as_instance = Association(db_filepath)
+            as_instance.parse()
+
 
         elif result == QMessageBox.No:
             print("트리에 비활성화 시켜야")

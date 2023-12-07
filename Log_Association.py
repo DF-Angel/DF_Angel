@@ -55,7 +55,7 @@ class Association:
             combined_results = sorted(combined_results, key=lambda x: x[4])
 
             for row in combined_results:
-                print(row)
+                #print(row)
                 try:
                     insert_data_association(row)
                 except Exception as e:
@@ -66,6 +66,3 @@ class Association:
 
         finally:
             connection.close()
-
-association_instance = Association("./IDIS_FS_sqlite.db")
-association_instance.parse()
