@@ -210,9 +210,13 @@ class UI_main(QMainWindow):
             return
 
         # 현재 스크립트와 동일한 경로에 추출된 비디오를 저장합니다.
-        current_dir = os.path.dirname(os.path.abspath(__file__))
+        #current_dir = os.path.dirname(os.path.abspath(__file__))
+        Extract_dir = os.path.join(case_directory,'Extract')
+        #current_dir = os.path.join()
         db_filepath = './IDIS_FS_sqlite.db'
-        extract_main(db_filepath, filepath, checked_indexes, current_dir)
+        extract_main(db_filepath, filepath, checked_indexes, Extract_dir)
+
+        QMessageBox.information(self, 'Success', f'Extract success {filepath}.')
 
     # ======================= Case =========================
     def new_case(self):
@@ -230,6 +234,7 @@ class UI_main(QMainWindow):
             return
 
         # 케이스 경로 생성
+        global case_directory
         case_directory = os.path.join(selected_directory, case_name)
 
         if not os.path.exists(case_directory):
@@ -237,10 +242,10 @@ class UI_main(QMainWindow):
 
             # DB, Export 디렉토리 생성
             db_directory = os.path.join(case_directory, 'DB')
-            export_directory = os.path.join(case_directory, 'Export')
+            extract_directory = os.path.join(case_directory, 'Extract')
 
             os.makedirs(db_directory)
-            os.makedirs(export_directory)
+            os.makedirs(extract_directory)
 
             QMessageBox.information(self, 'Success', f'Case "{case_name}" created successfully at {case_directory}. <br><br><b>Select the image you want to analyze.</b> ')
 
@@ -303,7 +308,7 @@ class UI_main(QMainWindow):
         try:
             imgfile_path = QDir(selected_directory).filePath('imgpath.case')
             imgfile = QFile(imgfile_path)
-            # print(imgfile)
+
             if not imgfile.open(QFile.ReadOnly | QFile.Text):
                 print(f"파일을 열 수 없습니다: {imgfile.errorString()}")
             else:
@@ -346,10 +351,6 @@ class UI_main(QMainWindow):
         except Exception as e:
             print(f"An error occurred in open_case: {e}")
 
-        # 여기에 케이스를 불러오는 추가적인 코드를 작성
-        # selected_directory 변수에 선택한 디렉토리 경로가 들어 있음
-
-        QMessageBox.information(self, 'Success', f'Case loaded from {selected_directory}.')
 
     # ======================= 1. Root scan =========================
     def update_root_scan(self, filepath):
