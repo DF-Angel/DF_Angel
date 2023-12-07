@@ -13,10 +13,12 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenuBar, QAction, QTree
                              QWidget, QFileDialog, QMessageBox, QGridLayout, QHeaderView, QTextBrowser, QTableView,
                              QCalendarWidget, QDialog, QPushButton, QInputDialog, QTimeEdit, QLineEdit, QFormLayout,
                              QSizePolicy, QMenu)
-from PyQt5.QtCore import Qt, QSortFilterProxyModel, QTime, QDateTime, QRegExp, pyqtSignal, QSortFilterProxyModel
+from PyQt5.QtCore import Qt, QSortFilterProxyModel, QTime, QDateTime, QRegExp, pyqtSignal, QSortFilterProxyModel, QDir, \
+    QFile, QTextStream
 import sqlite3
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QRegExpValidator
 from Extract_Video import main as extract_main
+from LogParser import LogParser
 
 class CustomSortFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
@@ -203,9 +205,13 @@ class UI_main(QMainWindow):
             return
 
         # 현재 스크립트와 동일한 경로에 추출된 비디오를 저장합니다.
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        db_filepath = 'IDIS_FS_sqlite.db'
-        extract_main(db_filepath, filepath, checked_indexes, current_dir)
+        #current_dir = os.path.dirname(os.path.abspath(__file__))
+        Extract_dir = os.path.join(case_directory,'Extract')
+        #current_dir = os.path.join()
+        db_filepath = './IDIS_FS_sqlite.db'
+        extract_main(db_filepath, filepath, checked_indexes, Extract_dir)
+
+        QMessageBox.information(self, 'Success', f'Extract success {filepath}.')
 
     # ======================= Case =========================
     def new_case(self):
@@ -223,6 +229,7 @@ class UI_main(QMainWindow):
             return
 
         # 케이스 경로 생성
+        global case_directory
         case_directory = os.path.join(selected_directory, case_name)
 
         if not os.path.exists(case_directory):
@@ -230,10 +237,10 @@ class UI_main(QMainWindow):
 
             # DB, Export 디렉토리 생성
             db_directory = os.path.join(case_directory, 'DB')
-            export_directory = os.path.join(case_directory, 'Export')
+            extract_directory = os.path.join(case_directory, 'Extract')
 
             os.makedirs(db_directory)
-            os.makedirs(export_directory)
+            os.makedirs(extract_directory)
 
             QMessageBox.information(self, 'Success', f'Case "{case_name}" created successfully at {case_directory}. <br><br><b>Select the image you want to analyze.</b> ')
 
@@ -283,20 +290,62 @@ class UI_main(QMainWindow):
             self.show_warning_message(filepath)
 
         except Exception as e:
-            print(f"An error occurred in open_image: {e}")
+            print(f"An error occurred in new_case: {e}")
 
     def open_case(self):
         # 사용자에게 디렉토리를 선택하도록 요청
         selected_directory = QFileDialog.getExistingDirectory(self, 'Select Case Directory', os.getcwd())
         self.casename = selected_directory.split("/")[-1]  # 경로에서 파일 이름만 추출해 전역변수 저장
-
+        print(selected_directory)
         if not selected_directory:
             return
 
-        # 여기에 케이스를 불러오는 추가적인 코드를 작성
-        # selected_directory 변수에 선택한 디렉토리 경로가 들어 있음
+        try:
+            imgfile_path = QDir(selected_directory).filePath('imgpath.case')
+            imgfile = QFile(imgfile_path)
 
-        QMessageBox.information(self, 'Success', f'Case loaded from {selected_directory}.')
+            if not imgfile.open(QFile.ReadOnly | QFile.Text):
+                print(f"파일을 열 수 없습니다: {imgfile.errorString()}")
+            else:
+                stream = QTextStream(imgfile)
+                while not stream.atEnd():
+                    imgpath = stream.readLine()
+                    imgfile.close()
+
+            self.filename = imgpath.split("/")[-1]  # 경로에서 파일 이름만 추출해 전역변수 저장
+
+            rs = Root_Scan(imgpath)  # Root_Scan()에 경로 넘기고 객체로 받기
+
+            if rs.check_file_validation() == 0:  # 파일이 정상적으로 열렸는지 확인
+                print("Invalid G2FDb image file. Exiting.")
+                sys.exit()  # 프로그램 종료
+
+            # analyzer 메소드 호출해 파일 분석, db 생성
+            rs.analyzer()
+
+            if imgpath:
+                item = QTreeWidgetItem(self.tree)  # 새로운 트리 항목(item) 생성
+                item.setText(0, self.filename)  # 파일 이름을 트리에 추가
+                self.files[imgpath] = item  # self.files 딕셔너리에 경로(키)와 해당 트리 뷰 항목(값) 저장
+                # print(self.files.items())
+
+                # Hex View
+                with open(imgpath, 'rb') as file:
+                    hex_value = file.read(5000).hex()
+                    formatted_hex_lines = self.format_hex_lines(hex_value)  # 포맷된 라인 리스트로 받음
+
+                    self.display_hex_value(formatted_hex_lines)
+                    self.update_hex_offset(formatted_hex_lines)
+                    self.display_ascii(formatted_hex_lines)
+
+            db_filepath = './IDIS_FS_sqlite.db'
+
+            self.update_root_scan(imgpath)  # 파일 처리 메서드 호출
+            self.show_warning_message(imgpath)
+
+        except Exception as e:
+            print(f"An error occurred in open_case: {e}")
+
 
     # ======================= 1. Root scan =========================
     def update_root_scan(self, filepath):
@@ -732,13 +781,84 @@ class UI_main(QMainWindow):
             traceback.print_exc()
 
     # ======================= Log =========================
-    def update_log(self):
+    def open_logfile(self):
+        try:
+            logfilepath, _ = QFileDialog.getOpenFileName(self, "Open log file", "", "All Files (*)")  # filepath에 경로 저장
+
+            #self.logfilepath = logfilepath.split("/")[-1]  # 경로에서 파일 이름만 추출해 전역변수 저장
+
+            if logfilepath:
+                log = LogParser(logfilepath)  # LogParser()에 경로 넘기고 객체로 받기
+
+                log.parse()  # DB 생성?
+
+                #item = QTreeWidgetItem(self.tree)  # 새로운 트리 항목(item) 생성
+                #item.setText(0, self.filename)  # 파일 이름을 트리에 추가
+                #self.files[logfilepath] = item  # self.files 딕셔너리에 경로(키)와 해당 트리 뷰 항목(값) 저장
+
+            db_filepath = './IDIS_FS_sqlite.db'
+            self.update_log(db_filepath)  # 로그 처리 메서드 호출
+            self.show_warning_message_log(logfilepath)
+
+        except Exception as e:
+            print(f"An error occurred in open_logfile: {e}")
+
+    def update_log(self, db_filepath):
+        try:
+            print("update_log()")
+
+            self.model.clear()
+            self.model.setColumnCount(3)  # 모델 컬럼 수 설정
+            self.model.setHorizontalHeaderLabels(["Index", "Event", "Time"])
+            self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)  # 사용자 조절 가능
+            self.blocktable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+            self.blocktable.horizontalHeader().resizeSection(0, 60)
+            self.blocktable.horizontalHeader().resizeSection(1, 250)
+            self.blocktable.horizontalHeader().resizeSection(2, 140)
+
+            db_filepath = './IDIS_FS_sqlite.db'
+            self.process_log_list(db_filepath)  # db 리스트 생성
+            self.process_log_graph(db_filepath)  # db 그래프 생성
+        except Exception as e:
+            print(f"An error occurred in update_log(): {e}")
+
+    def process_log_list(self, db_filepath):
+        try:
+            print("process_log()")
+            # SQLite DB 연결 생성
+            connection = sqlite3.connect(db_filepath)
+            cursor = connection.cursor()
+
+            # LOG 테이블 데이터 검색
+            query = "SELECT * FROM LOG"
+            cursor.execute(query)
+            rows = cursor.fetchall()  # 각 행 rows 리스트에 저장
+
+            # 기존 데이터 제거
+            self.model.removeRows(0, self.model.rowCount())
+
+            # 모든 데이터 처리
+            for row_index, row in enumerate(rows):
+                for col, value in enumerate(row):
+                    print(f"Processing column {col}: {value}")
+                    item = QStandardItem()
+                    if col == 0:  # index -> int
+                        item.setData(int(value), Qt.DisplayRole)  # Qt.DisplayRole: 모델 데이터를 표시할 때 사용
+                    else:
+                        item.setData(value, Qt.DisplayRole)
+
+                    item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
+                    item.setTextAlignment(Qt.AlignCenter)
+                    self.model.setItem(row_index, col, item)
+
+            connection.close()
+        except Exception as e:
+            print(f"An error occurred in process_log(): {e}")
+
+    def process_log_graph(self, db_filepath):
         pass
 
-    def update_preview(self, image_path):
-        # Image loading and updating preview...
-        pass
-
+    # ======================= Tree =========================
     def on_tree_select(self):
         selected_items = self.tree.selectedItems()
 
@@ -761,7 +881,7 @@ class UI_main(QMainWindow):
                     self.update_unallocated()
 
                 elif selected_name == "Log":
-                    self.update_log()
+                    self.open_logfile() # 최초만 !
 
             except Exception as e:
                 print(f"An error occurred in on_tree_select: {e}")
@@ -874,6 +994,59 @@ class UI_main(QMainWindow):
 
         else:
             print("User clicked No. Cancelling precise scan.")
+
+    def show_warning_message_log(self, filepath):
+        # Add a warning message
+        warning_message = QMessageBox()
+        warning_message.setIcon(QMessageBox.Warning)
+        warning_message.setText("연관 분석을 진행하시겠습니까? (시간이 오래 소요될 수 있습니다.)")
+        warning_message.setWindowTitle("연관 분석")
+        warning_message.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        warning_message.setDefaultButton(QMessageBox.Yes)
+
+        # 버튼 클릭과 on_warning_button_clicked() 연결
+        warning_message.buttonClicked.connect(self.on_warning_button_clicked)
+
+        # 실행
+        result = warning_message.exec_()
+
+        # 실행 후 일단 트리에 추가 이후 활성화 or 비활성화
+        # 트리에 파일 이름이 존재하는지 확인
+        filename = filepath.split("/")[-1]
+        items_with_filename = self.tree.findItems(filename, Qt.MatchExactly, 0)
+        print(items_with_filename)
+
+        selected_item = items_with_filename[0]
+
+        # Create Allocated and Unallocated items
+        associated_item = QTreeWidgetItem()
+
+        # Set text for Allocated and Unallocated items
+        associated_item.setText(0, "Associated scan")
+
+        # Add Allocated and Unallocated items to the tree
+        selected_item.addChild(associated_item)
+
+        # Expand the selected item to show the new children
+        selected_item.setExpanded(True)
+
+        QApplication.processEvents()  # Force UI to update instantly
+
+        if result == QMessageBox.Yes:
+            print("User clicked Yes. Proceeding with associated scan.")
+            # ps = Scan(filepath)  # 연관분석 추가해야
+            # ps.analyzer()  # db 생성
+
+        elif result == QMessageBox.No:
+            print("트리에 비활성화 시켜야")
+
+            # 비활성화 처리
+            for i in range(selected_item.childCount()):
+                child_item = selected_item.child(i)
+                child_item.setFlags(child_item.flags() & ~Qt.ItemIsEnabled)
+
+        else:
+            print("User clicked No. Cancelling associated scan.")
 
     def on_warning_button_clicked(self, button):
         if button.text() == "&Yes":

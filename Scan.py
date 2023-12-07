@@ -10,6 +10,11 @@ class Scan:
     def analyzer(self):
         with self.f as file:
             ABS = Allocated_Block_Scan()
+            version = 0#version 0 is HR-1508
+            file.seek(0x80100080, 0)
+            version_signature = file.read(16)
+            if version_signature == b'G2FDbSerialMagic':
+                version = 1
             block_cnt = 1
             base = 0x80100000
             block_meta = []
@@ -38,6 +43,10 @@ class Scan:
                         continue
                 block_channel = block_index[0x22]
                 block_meta.append([block_index[0], block_start_time, block_end_time, block_channel])
+                if block_index[0] == 0x06:
+                    version = 1
+                elif block_index[0] == 0x05:
+                    version = 0
             #print(block_meta[28])
             for i in range(len(block_meta)):
                 #print(block_cnt)
@@ -47,20 +56,21 @@ class Scan:
                 file.seek(base + 0x10000000 * block_cnt + 0x100000, 0)
                 #print(block_meta[i][0])
                 if block_meta[i][0] == 0x05 or block_meta[i][0] == 0x06:
-                    ABS.analyzer(block_meta[i][1], block_meta[i][2], block_cnt, file)
+                    ABS.analyzer(block_meta[i][1], block_meta[i][2], block_cnt, file, version)
                 elif block_index[0] == 0x00:#비할당
-                    all_del_condition = True
+                    #all_del_condition = True
                     UBS = Unallocated_Block_Scan()
                     if block_meta[i][1] == 0x03419F7D:#포맷
-                        UBS.format(block_cnt, file)
+                        UBS.format(block_cnt, file, version)
                     else:#모든 데이터 삭제 or 부분 삭제(블록 전체)
-                        for j in range(len(block_meta)):
-                            if block_meta[j] == []:
-                                continue
-                            if i == j or block_meta[j][1] == 0x03419F7D:
-                                continue
-                            if block_meta[i][1] >= block_meta[j][1] and block_meta[j][0] != 0x00:
-                                all_del_condition = False
-                                break
-                        UBS.all_del(block_meta[i][1], block_meta[i][2], block_cnt, file, all_del_condition)
+                        UBS.all_del(block_meta[i][1], block_meta[i][2], block_cnt, file, version)
+                        #for j in range(len(block_meta)):
+                        #    if block_meta[j] == []:
+                        #        continue
+                        #    if i == j or block_meta[j][1] == 0x03419F7D:
+                        #        continue
+                        #    if block_meta[i][1] >= block_meta[j][1] and block_meta[j][0] != 0x00:
+                        #        all_del_condition = False
+                        #        break
+                        #UBS.all_del(block_meta[i][1], block_meta[i][2], block_cnt, file, all_del_condition, version)
                 block_cnt += 1
