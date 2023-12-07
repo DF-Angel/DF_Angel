@@ -12,13 +12,16 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenuBar, QAction, QTree
                              QTableWidget, QTableWidgetItem, QLabel, QTextEdit, QVBoxLayout, QHBoxLayout,
                              QWidget, QFileDialog, QMessageBox, QGridLayout, QHeaderView, QTextBrowser, QTableView,
                              QCalendarWidget, QDialog, QPushButton, QInputDialog, QTimeEdit, QLineEdit, QFormLayout,
-                             QSizePolicy, QMenu)
+                             QSizePolicy, QMenu, QGraphicsView, QGraphicsScene, QGraphicsGridLayout)
 from PyQt5.QtCore import Qt, QSortFilterProxyModel, QTime, QDateTime, QRegExp, pyqtSignal, QSortFilterProxyModel, QDir, \
     QFile, QTextStream
 import sqlite3
-from PyQt5.QtGui import QStandardItemModel, QStandardItem, QRegExpValidator
+from PyQt5.QtGui import QStandardItemModel, QStandardItem, QRegExpValidator, QPainter
 from Extract_Video import main as extract_main
 from LogParser import LogParser
+from PyQt5.QtChart import QChart, QBarSet, QBarSeries, QChartView, QLineSeries, QDateTimeAxis, QValueAxis, QBarCategoryAxis
+from PyQt5.QtCore import QDate
+
 
 class CustomSortFilterProxyModel(QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
@@ -37,6 +40,8 @@ class UI_main(QMainWindow):
         self.blocktable = QTableView()  # QTableView로 수정
         self.blocktable.setModel(self.proxy_model)
         self.blocktable.setSortingEnabled(True)
+
+        self.hexLayout = QHBoxLayout()
 
         self.files = {}  # 파일 경로와 트리 항목(ID)을 저장하는 딕셔너리
         self.filename = ""  # 파일 이름을 담을 전역 변수
@@ -64,7 +69,7 @@ class UI_main(QMainWindow):
 
         treeLayout = QVBoxLayout()
         mainLayout = QHBoxLayout()
-        hexLayout = QHBoxLayout()
+        #hexLayout = QHBoxLayout()
 
         hexoffsetLayout = QVBoxLayout()
         hexdisplayLayout = QVBoxLayout()
@@ -112,7 +117,7 @@ class UI_main(QMainWindow):
         self.hex_offset.setLineWrapMode(QTextEdit.NoWrap)  # 자동 줄 바꿈 비활성화
         self.hex_offset.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         hexoffsetLayout.addWidget(self.hex_offset, 8)
-        hexLayout.addLayout(hexoffsetLayout, 2)
+        self.hexLayout.addLayout(hexoffsetLayout, 2)
 
         # ====================================
 
@@ -126,7 +131,7 @@ class UI_main(QMainWindow):
         self.hex_display.setLineWrapMode(QTextBrowser.NoWrap)  # 자동 줄 바꿈 비활성화
         self.hex_display.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         hexdisplayLayout.addWidget(self.hex_display, 8)
-        hexLayout.addLayout(hexdisplayLayout, 5)
+        self.hexLayout.addLayout(hexdisplayLayout, 5)
 
         # ====================================
 
@@ -139,9 +144,9 @@ class UI_main(QMainWindow):
         self.ascii_display.setReadOnly(True)  # 읽기 전용으로 설정 (편집 불가능)
         self.ascii_display.setLineWrapMode(QTextBrowser.NoWrap)  # 자동 줄 바꿈 비활성화
         asciiLayout.addWidget(self.ascii_display, 8)
-        hexLayout.addLayout(asciiLayout, 5)
+        self.hexLayout.addLayout(asciiLayout, 5)
 
-        rightLayout.addLayout(hexLayout, 1)
+        rightLayout.addLayout(self.hexLayout, 1)
 
         # ====================================
 
@@ -594,7 +599,7 @@ class UI_main(QMainWindow):
                     elif value == 1:
                         output_text = '부분 삭제'
                     elif value == 2:
-                        output_text = '모든 데이터 삭제'
+                        output_text = '삭제???' # 바꿔야 함
                     elif value == 3:
                         output_text = '포맷'
                     elif value == 4:
@@ -791,10 +796,6 @@ class UI_main(QMainWindow):
 
                 log.parse()  # DB 생성?
 
-                #item = QTreeWidgetItem(self.tree)  # 새로운 트리 항목(item) 생성
-                #item.setText(0, self.filename)  # 파일 이름을 트리에 추가
-                #self.files[logfilepath] = item  # self.files 딕셔너리에 경로(키)와 해당 트리 뷰 항목(값) 저장
-
             db_filepath = './IDIS_FS_sqlite.db'
             self.update_log(db_filepath)  # 로그 처리 메서드 호출
             self.show_warning_message_log(logfilepath)
@@ -802,10 +803,11 @@ class UI_main(QMainWindow):
         except Exception as e:
             print(f"An error occurred in open_logfile: {e}")
 
-    def update_log(self, db_filepath):
+    def update_log(self, db_filepath): # 리스트, 그래프 화면 초기화?
         try:
             print("update_log()")
 
+            # 리스트
             self.model.clear()
             self.model.setColumnCount(3)  # 모델 컬럼 수 설정
             self.model.setHorizontalHeaderLabels(["Index", "Event", "Time"])
@@ -814,12 +816,127 @@ class UI_main(QMainWindow):
             self.blocktable.horizontalHeader().resizeSection(0, 60)
             self.blocktable.horizontalHeader().resizeSection(1, 250)
             self.blocktable.horizontalHeader().resizeSection(2, 140)
-
-            db_filepath = './IDIS_FS_sqlite.db'
             self.process_log_list(db_filepath)  # db 리스트 생성
-            self.process_log_graph(db_filepath)  # db 그래프 생성
+
+            # 그래프
+            self.clear_hex_layout() # hexLayout 초기화
+            self.process_log_graph(db_filepath) # db 그래프 생성
+
         except Exception as e:
             print(f"An error occurred in update_log(): {e}")
+
+    def process_log_graph(self, db_filepath):
+        try:
+            print("process_log_graph()")
+
+            # Establish database connection
+            connection = sqlite3.connect(db_filepath)
+            cursor = connection.cursor()
+
+            # Events to consider
+            events_to_consider = ['부분 삭제 시작', '모든 데이터 삭제', '포맷']
+
+            # Query to get distinct dates from the database
+            date_query = "SELECT DISTINCT DATE(DATETIME) FROM LOG"
+            cursor.execute(date_query)
+            date_result = cursor.fetchall()
+
+            # Extract distinct dates from the result
+            date_range = [row[0] for row in date_result]
+
+            # Dictionary to store date counts for each event
+            date_event_counts = {formatted_date: {event: 0 for event in events_to_consider} for formatted_date in
+                                 date_range}
+
+            # Query to get count of events per date (considering only year-month-day)
+            for event in events_to_consider:
+                query = f"SELECT DATE(DATETIME), COUNT(EVENT) FROM LOG WHERE EVENT LIKE '%{event}%' GROUP BY DATE(DATETIME)"
+                cursor.execute(query)
+
+                # Traverse the query result and update the date_event_counts dictionary
+                for row in cursor.fetchall():
+                    datetime_str, event_count = row
+                    date_obj = QDate.fromString(datetime_str, "yyyy-MM-dd")
+                    formatted_date = date_obj.toString("yyyy-MM-dd")
+
+                    # Update the dictionary with event count for the specific date and event
+                    date_event_counts[formatted_date][event] = event_count
+
+            # Close the database connection
+            connection.close()
+
+            # Filter out dates with no occurrence for any event
+            date_event_counts = {formatted_date: event_counts for formatted_date, event_counts in
+                                 date_event_counts.items() if any(event_counts.values())}
+
+            print(date_event_counts)
+
+            if not date_event_counts:
+                print("No data to display.")
+                return
+
+            # Dictionary to map original event names to custom legend names
+            event_legend_mapping = {
+                '부분 삭제 시작': '부분 삭제',
+                '모든 데이터 삭제': '모든 데이터 삭제',
+                '포맷': '포맷'
+            }
+
+            # Create a bar series for each event
+            series_list = []
+            for event in events_to_consider:
+                bar_set = QBarSet(event_legend_mapping.get(event, event))  # Use custom legend name if available, otherwise use original
+                for formatted_date, event_counts in date_event_counts.items():
+                    bar_set.append(event_counts[event])
+                series = QBarSeries()
+                series.append(bar_set)
+                series_list.append(series)
+
+            # Create a bar series for each event
+            series_list = []
+            for event in events_to_consider:
+                bar_set = QBarSet(event)
+                for formatted_date, event_counts in date_event_counts.items():
+                    bar_set.append(event_counts[event])
+                series = QBarSeries()
+                series.append(bar_set)
+                series_list.append(series)
+
+            # Create a chart and set the series
+            chart = QChart()
+            for series in series_list:
+                chart.addSeries(series)
+
+            chart.setAnimationOptions(QChart.SeriesAnimations)
+            chart.legend().setVisible(True)  # Show legend
+
+            # 가로축 (날짜)
+            datetime_axis = QBarCategoryAxis()
+            datetime_axis.append(date_event_counts.keys())  # Use the keys (dates) directly
+            chart.addAxis(datetime_axis, Qt.AlignBottom)
+
+            # 세로축
+            value_axis = QValueAxis()  # 세로축 객체
+            value_axis.setTickCount(5)  # 세로축 눈금 개수
+            chart.addAxis(value_axis, Qt.AlignLeft)
+
+            # Set the range for the vertical axis
+            min_value = 0
+            max_value = max(max(event_counts.values()) for event_counts in
+                            date_event_counts.values())  # Use the maximum value among all events
+            value_axis.setRange(min_value, max_value)  # 세로축의 범위 설정
+
+            # Create a chart view and set the chart
+            log_graph_widget = QChartView(chart)
+            log_graph_widget.setStyleSheet("background-color: white")
+
+            # Add the chart view to the layout
+            log_layout = QHBoxLayout()
+            log_layout.addWidget(log_graph_widget, 1)
+            self.hexLayout.addLayout(log_layout, 1)
+
+        except Exception as e:
+            print(f"An error occurred in process_log_graph(): {e}")
 
     def process_log_list(self, db_filepath):
         try:
@@ -854,8 +971,27 @@ class UI_main(QMainWindow):
         except Exception as e:
             print(f"An error occurred in process_log(): {e}")
 
-    def process_log_graph(self, db_filepath):
-        pass
+    def clear_hex_layout(self):
+        # hexLayout 내부의 모든 위젯을 제거
+        while self.hexLayout.count():
+            item = self.hexLayout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.setParent(None)
+            else:
+                layout = item.layout()
+                self.clear_layout(layout)
+                layout.setParent(None)
+
+    def clear_layout(self, layout):
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.setParent(None)
+            else:
+                self.clear_layout(item.layout())
+
 
     # ======================= Tree =========================
     def on_tree_select(self):
