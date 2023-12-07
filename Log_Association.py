@@ -21,14 +21,32 @@ try:
     SELECT EVENT, NULL, NULL, NULL, DATETIME, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0
     FROM LOG
     WHERE (EVENT LIKE '%삭제%' OR EVENT LIKE '%포맷%' OR EVENT LIKE '%클립%' OR EVENT LIKE '%시스템%' OR EVENT LIKE '%설정 변경%')
-      AND EVENT NOT LIKE '%부분 삭제 시작%'
       AND EVENT NOT LIKE '%부분 삭제 종료%'
     """
+
     cursor.execute(query_log)
 
     rows_log = cursor.fetchall()
 
-    combined_results.extend(rows_log)
+    combined_dict = {}
+
+    for row in rows_log:
+        event_text = row[0]
+        datetime_value = row[4]
+
+        if "부분 삭제 카메라" in event_text:
+            camera_number = event_text.split('.')[0].strip()
+
+            if datetime_value in combined_dict:
+                combined_dict[datetime_value].append(camera_number)
+            else:
+                combined_dict[datetime_value] = [camera_number]
+        else:
+            combined_results.append(row)
+
+    for datetime_value, camera_numbers in combined_dict.items():
+        formatted_row = ("" + ', '.join(camera_numbers), None, None, None, datetime_value, None, None, None, None, None, None, None, None, 0)
+        combined_results.append(formatted_row)
 
     combined_results = sorted(combined_results, key=lambda x: x[4])
 
