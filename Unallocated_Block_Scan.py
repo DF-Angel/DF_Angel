@@ -470,6 +470,7 @@ class Unallocated_Block_Scan:
             return
 
         while i_frame_offset != -1 or p_frame_offset != -1:
+            #print(i_frame_offset)
             sel_type = 0
             if i_frame_offset != -1 and p_frame_offset != -1:
                 if i_frame_offset > p_frame_offset:
@@ -485,13 +486,14 @@ class Unallocated_Block_Scan:
             if sel_type == 1:#P-Frame Check
                 #if len(unknown_frame_set) != 0 and unknown_frame_set[-1][1] == 0:
                 #    unknown_frame_set[-1][1] = p_frame_offset - bef_frame_offset  # 직전에 처리한 프레임의 오프셋
-                if p_frame_offset <= 0x20 + interval_p:
+                if p_frame_offset < interval_p:
                     #unknown_frame_set.append([slack_start_offset + p_frame_offset, 0])  # start offset, size
                     index += 1
                     #bef_frame_offset = p_frame_offset
                     p_frame_offset = slack_data.find(p_frame_sig, index)
                     continue
-                frame_meta = slack_data[p_frame_offset - interval_p: p_frame_offset - interval_p + 0x20]
+                #frame_meta = slack_data[p_frame_offset - interval_p: p_frame_offset - interval_p + 0x20]
+                frame_meta = slack_data[p_frame_offset - interval_p: p_frame_offset]
                 frame_time = convert_to_datetime(int.from_bytes(frame_meta[0x04:0x08], byteorder='little'))
                 frame_size = int.from_bytes(frame_meta[0x10:0x14], byteorder='little')
                 frame_channel = frame_meta[0x18]
@@ -518,33 +520,37 @@ class Unallocated_Block_Scan:
                     )
                     index += frame_size - 0x23
                 else:
+                    if frame_meta[-0x10:] == b'\x00' * 0x10:
+                        unknown_frame_set.append([slack_start_offset + p_frame_offset, 0, 1])  # start offset, size, frame type
                     #unknown_frame_set.append([slack_start_offset + p_frame_offset, 0,
                     #                         1])  # start offset, size, frame type
-                    index += 1
+                    index = p_frame_offset + 1
                 bef_frame_offset = p_frame_offset
                 p_frame_offset = slack_data.find(p_frame_sig, index)
 
             elif sel_type == 0:#I-Frame Check
                 #if len(unknown_frame_set) != 0 and unknown_frame_set[-1][1] == 0:
                 #    unknown_frame_set[-1][1] = i_frame_offset - bef_frame_offset  # 직전에 처리한 프레임의 오프셋
-                if i_frame_offset <= 0x20 + interval_i:
-                    unknown_frame_set.append(slack_start_offset + i_frame_offset, 0)  # start offset, size
+                if i_frame_offset < interval_i:
+                #    unknown_frame_set.append(slack_start_offset + i_frame_offset, 0)  # start offset, size
                     index += 1
-                    bef_frame_offset = i_frame_offset
+                #    bef_frame_offset = i_frame_offset
                     i_frame_offset = slack_data.find(i_frame_sig, index)
                     continue
-                frame_meta = slack_data[i_frame_offset - interval_i: i_frame_offset - interval_i + 0x20]
+                #frame_meta = slack_data[i_frame_offset - interval_i: i_frame_offset - interval_i + 0x20]
+                frame_meta = slack_data[i_frame_offset - interval_i: i_frame_offset]
                 frame_time = convert_to_datetime(int.from_bytes(frame_meta[0x04:0x08], byteorder='little'))
                 frame_size = int.from_bytes(frame_meta[0x10:0x14], byteorder='little')
                 frame_channel = frame_meta[0x18]
                 frame_type = frame_meta[0x1A]
                 frame_offset = int.from_bytes(frame_meta[0x1C:0x20], byteorder='little')
+                #print(frame_time)
                 if (
                         frame_time != 0 and
                         frame_offset == slack_start_offset + i_frame_offset - 0x80600000 - interval_i - (
                         block_cnt * 0x10000000) and
                         # frame_time < last_frame_time and
-                        frame_type == 1 and
+                        frame_type == 0 and
                         0 <= frame_channel < 255 and
                         0 <= frame_size <= (slack_end_offset - slack_start_offset - i_frame_offset)
                 ):
@@ -558,11 +564,13 @@ class Unallocated_Block_Scan:
                             "frame_offset": frame_offset,
                         }
                     )
-                    index += frame_size - 0x23
+                    index += frame_size - 0x3A
                 else:
+                    if frame_meta.find(b'\x00\x00\x00\x01\x67') != -1 and frame_meta.find(b'\x00\x00\x00\x01\x68'):
+                        unknown_frame_set.append([slack_start_offset + i_frame_offset, 0, 0])  # start offset, size, frame type
                     #unknown_frame_set.append([slack_start_offset + i_frame_offset, 0,
                     #                         0])  # start offset, size, frame type
-                    index += 1
+                    index = i_frame_offset + 1
                 bef_frame_offset = i_frame_offset
                 i_frame_offset = slack_data.find(i_frame_sig, index)
         #print('unknown : ' + str(len(unknown_frame_set)) + ' / known : ' + str(
@@ -592,7 +600,7 @@ class Unallocated_Block_Scan:
                     idx = frame_cnt
                 bef_frame_time = channel_groups[channel][frame_cnt]["frame_time"]
             process_frame_set(channel_groups[channel][idx:len(channel_groups[channel])], status, block_cnt, 1, version)
-        return
+
         for i in range(len(unknown_frame_set)):
             i_frame_cnt = 0
             p_frame_cnt = 0
