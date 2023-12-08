@@ -2,16 +2,15 @@ from datetime import datetime, timedelta
 from sqlite_db import *
 
 def convert_to_datetime(time_info):
-    time_info_bin = bin(time_info)[2:]
-
-    sec = int(time_info_bin[-6:], 2)
-    min = int(time_info_bin[-12:-6], 2)
-    hour = int(time_info_bin[-17:-12], 2)
-    day = int(time_info_bin[-22:-17], 2)
-    month = int(time_info_bin[-26:-22], 2)
-    year = int(time_info_bin[:-26], 2) + 1970
-
     try:
+        time_info_bin = bin(time_info)[2:]
+
+        sec = int(time_info_bin[-6:], 2)
+        min = int(time_info_bin[-12:-6], 2)
+        hour = int(time_info_bin[-17:-12], 2)
+        day = int(time_info_bin[-22:-17], 2)
+        month = int(time_info_bin[-26:-22], 2)
+        year = int(time_info_bin[:-26], 2) + 1970
         return datetime(year, month, day, hour, min, sec)
     except ValueError:
         return 0  # 파일을 찾을 수 없을 때 0을 반환
@@ -75,9 +74,8 @@ def process_frame_set(frame_set, status, block_cnt, AU, version):#AU는 할당/�
                                  frame_set[-1]["frame_offset"] + frame_set[-1]["frame_size"] + 0xBA, size,
                                  status, i_frame_cnt,
                                  p_frame_cnt, AU)
-        return
-
-    insert_data_precise_scan(str(frame_set[0]["frame_time"]) + " ~ " + str(frame_set[-1]["frame_time"]), block_cnt,
+    else:
+        insert_data_precise_scan(str(frame_set[0]["frame_time"]) + " ~ " + str(frame_set[-1]["frame_time"]), block_cnt,
                              frame_set[0]["frame_channel"], str(frame_set[0]["frame_time"]),
                              str(frame_set[-1]["frame_time"]), duration, base + frame_set[0]["frame_offset"],
                              base + frame_set[-1]["frame_offset"] + frame_set[-1]["frame_size"] + 0xBA, size, status, i_frame_cnt,

@@ -49,6 +49,8 @@ class Scan:
                     version = 0
             #print(block_meta[28])
             for i in range(len(block_meta)):
+                #if block_cnt > 2:
+                #    return
                 #print(block_cnt)
                 if block_meta[i] == []:
                     block_cnt += 1
