@@ -35,24 +35,45 @@ def extract_data_from_db(db_filepath, image_filepath, output_folder, selected_in
             logging.info(f"Index {index} has zero size, skipping extraction.")
             continue
 
+        p_frames = 0
+        i_frame_found = False
+        i_frame_count = 0
+
         with open(frame_data_file, 'wb') as fd_file, open(image_filepath, 'rb') as file:
+            
+            metadata = file.read(0xA0200000)
+            frame_type = metadata[26]
+            if frame_type == 0x00:  # I-frame
+                if not i_frame_found:
+                    i_frame_found = True
+                else:
+                    i_frame_count += 1
+            elif frame_type == 0x01 and i_frame_found:  # P-frame
+                p_frames += 1            
+
             file.seek(start_offset + 0xC4)
             data = file.read(size)
             fd_file.write(data)
+
+    frame_cycle = p_frames + 1 if i_frame_count == 0 else p_frames / i_frame_count
+    speed_factor = 25.0 / frame_cycle
+    logging.info(f"Speed factor for index {index}: {speed_factor}")
+
     # 모든 프레임 데이터가 추출된 후 MP4로 변환
     output_mp4_file = os.path.join(output_folder, 'Extracted', f'precise_{index}.mp4')
-    convert_to_mp4(frame_data_file, output_mp4_file)
+    convert_to_mp4(frame_data_file, output_mp4_file, speed_factor)
 
     cursor.close()
     connection.close()
 
 # .bin 파일을 .mp4로 변환하는 함수
-def convert_to_mp4(input_file, output_file):
+def convert_to_mp4(input_file, output_file, speed_factor=5.0):
     try:
         (
             ffmpeg
             .input(input_file, format='h264')
-            .output(output_file, vcodec='copy')
+            .filter('setpts', f'{speed_factor}*PTS')
+            .output(output_file, vcodec='libx264', preset='ultrafast', threads='auto')
             .run(overwrite_output=True)
         )
         logging.info(f"변환 완료: {output_file}")
