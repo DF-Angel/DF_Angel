@@ -18,6 +18,7 @@ from PyQt5.QtCore import Qt, QSortFilterProxyModel, QTime, QDateTime, QRegExp, p
 import sqlite3
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QRegExpValidator, QPainter
 from Extract_Video import main as extract_main
+from Precise_Extract_Video import main as precise_extract_main
 from LogParser import LogParser
 from Log_Association import Association
 from PyQt5.QtChart import QChart, QBarSet, QBarSeries, QChartView, QLineSeries, QDateTimeAxis, QValueAxis, QBarCategoryAxis
@@ -44,6 +45,14 @@ class UI_main(QMainWindow):
 
         self.files = {}  # 파일 경로와 트리 항목(ID)을 저장하는 딕셔너리
         self.filename = ""  # 파일 이름을 담을 전역 변수
+        self.filepath = ""
+
+        # hex <-> decimal
+        self.current_base = {}
+
+        # 헤더에 컨텍스트 메뉴 연결
+        self.blocktable.horizontalHeader().setContextMenuPolicy(Qt.CustomContextMenu)
+        self.blocktable.horizontalHeader().customContextMenuRequested.connect(self.show_context_menu)
 
         # log
         self.rightLayout = QVBoxLayout()  # 수직
@@ -55,7 +64,10 @@ class UI_main(QMainWindow):
         self.show_daily_button.clicked.connect(self.process_log_graph)
 
         self.show_monthly_button = QPushButton("Monthly Graph")
-        self.show_monthly_button.clicked.connect(self.show_monthly_graph)
+        self.show_monthly_button.clicked.connect(lambda: self.show_graph("monthly"))
+
+        self.show_yearly_button = QPushButton("Yearly Graph")
+        self.show_yearly_button.clicked.connect(lambda: self.show_graph("yearly"))
 
         self.init_ui()  # ui 실행 함수 호출
 
@@ -67,7 +79,7 @@ class UI_main(QMainWindow):
 
     def init_ui(self):
         self.setWindowTitle("IDIS DVR Analyzer by DF_Angel")
-        self.setGeometry(100, 100, 1200, 600)  # x, y, 가로, 세로
+        self.setGeometry(100, 100, 1500, 700)  # x, y, 가로, 세로
 
         # Main widget and layout
         mainWidget = QWidget(self)  # 창 생성
@@ -186,8 +198,9 @@ class UI_main(QMainWindow):
 
         # Analysis
         analysisMenu = menubar.addMenu('Analysis')
-        filterAction = QAction('Precise scan', self)  # 추가 정밀 분석 기능 추가
-        analysisMenu.addAction(filterAction)
+        psAction = QAction('Precise scan', self)  # 추가 정밀 분석 기능
+        psAction.triggered.connect(self.re_update_precise_scan)
+        analysisMenu.addAction(psAction)
 
         # Help
         helpMenu = menubar.addMenu('Help')
@@ -200,10 +213,24 @@ class UI_main(QMainWindow):
     def contextMenuEvent(self, event):
         menu = QMenu(self)
         extract_action = menu.addAction("Extract")
-        extract_action.triggered.connect(self.extract_selected_rows)
+        # 현재 선택된 탭이 'Precise Scan'인지 확인
+        if self.is_precise_scan_tab_selected():
+            extract_action.triggered.connect(self.precise_extract_selected_rows)
+        else:
+            extract_action.triggered.connect(self.extract_selected_rows)
 
         # 메뉴 실행
         menu.exec_(event.globalPos())
+
+    def is_precise_scan_tab_selected(self):
+        selected_items = self.tree.selectedItems()
+        if selected_items:
+            # 현재 선택된 항목의 이름을 가져옵니다.
+            selected_name = selected_items[0].text(0)
+            # 'Precise Scan' 탭이 선택되었는지 확인합니다.
+            return selected_name == "Precise Scan"
+        return False  # 선택된 항목이 없으면 False를 반환합니다.
+
 
     # Extract 저장 경로 설정
     def select_output_folder(self):
@@ -231,6 +258,22 @@ class UI_main(QMainWindow):
         extract_main(db_filepath, filepath, checked_indexes, Extract_dir)
 
         QMessageBox.information(self, 'Success', f'Extract success {filepath}.')
+    
+    # Precise Extract 기능
+    def precise_extract_selected_rows(self):
+        # 선택된 정밀 스캔 데이터의 인덱스 가져오기
+        checked_indexes = [int(self.model.item(row, 1).text()) for row in range(self.model.rowCount())
+                            if self.model.item(row, 0).checkState() == Qt.Checked]
+
+        if not checked_indexes:
+            QMessageBox.information(self, "Precise Extract", "No rows selected for extraction.")
+            return
+
+        # Precise_Extract_Video 실행
+        Extract_dir = os.path.join(case_directory, 'Extract')
+        db_filepath = './IDIS_FS_sqlite.db'
+        precise_extract_main(db_filepath, filepath, checked_indexes, Extract_dir)
+        QMessageBox.information(self, 'Success', f'Precise Extract success {filepath}.')
 
     # ======================= Case =========================
     def new_case(self):
@@ -442,6 +485,46 @@ class UI_main(QMainWindow):
 
         connection.close()
 
+    # ======================= Hex <-> Decimal =========================
+    def show_context_menu(self, pos):
+        # 우클릭한 위치의 열 인덱스 가져오기
+        header = self.blocktable.horizontalHeader()
+        index = header.logicalIndexAt(pos.x())
+
+        # 컨텍스트 메뉴 생성
+        menu = QMenu(self)
+        hex_action = QAction("Convert to Hex", self)
+        hex_action.triggered.connect(lambda: self.convert_to_base(index, 16))
+        menu.addAction(hex_action)
+
+        decimal_action = QAction("Convert to Decimal", self)
+        decimal_action.triggered.connect(lambda: self.convert_to_base(index, 10))
+        menu.addAction(decimal_action)
+
+        # 메뉴 표시
+        menu.exec_(header.mapToGlobal(pos))
+
+    def convert_to_base(self, col_index, base):
+        for row in range(self.model.rowCount()):
+            item = self.model.item(row, col_index)
+            if item is not None:
+                try:
+                    current_base = self.current_base.get((row, col_index), 10)  # 현재 기수 정보 가져오기 (기본값은 10진수)
+                    if current_base != base:  # 이미 해당 기수로 표현되어 있지 않은 경우에만 변환
+                        if base == 16:  # 10 -> 16
+                            value = int(item.text())
+                            hex_value = hex(value)[2:]  # 0x
+                            item.setText(hex_value)
+                            self.current_base[(row, col_index)] = base  # 현재 기수 정보 저장
+                        elif base == 10:  # 16 -> 10
+                            value = int(item.text(), 16)
+                            item.setText(str(value))
+                            self.current_base[(row, col_index)] = base  # 현재 기수 정보 저장
+
+                except ValueError:
+                    # 변환 실패 시에는 예외 처리
+                    pass
+
     # ======================= Filtering =========================
     # 필터링 트리거
     def onFilteringBtnClicked(self):
@@ -558,12 +641,14 @@ class UI_main(QMainWindow):
         print("update_precise scan()")
 
         self.model.clear()
+
         self.model.setColumnCount(15)  # 모델에 있는 컬럼 수 설정
         self.model.setHorizontalHeaderLabels(
             ["Check", "Index", "Name", "Block", "Channel", "Start Time", "End Time", "Duration", "Start Offset",
              "End Offset", "Size", "Del Type", "I-Frame", "P-Frame", "삭제 여부"])
         self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)  # 사용자 조절 가능
         self.blocktable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.blocktable.horizontalHeader().resizeSection(0, 60)
         self.blocktable.horizontalHeader().resizeSection(1, 60)
         self.blocktable.horizontalHeader().resizeSection(2, 60)
         self.blocktable.horizontalHeader().resizeSection(3, 60)
@@ -584,8 +669,16 @@ class UI_main(QMainWindow):
         cursor.execute(query)
         rows = cursor.fetchall()  # 각 행 rows 리스트에 저장
 
-        # 기존 데이터 제거
-        self.model.removeRows(0, self.model.rowCount())
+        # 테이블 상단에 필터링 행 추가
+        for col in range(self.model.columnCount()):  # 모델 열 개수
+            item = QStandardItem("")  # 각 열에 해당하는 새로운 아이템 생성
+            item.setFlags(Qt.ItemIsEditable | Qt.ItemIsEnabled)  # 편집 가능하고 활성화
+            self.model.setItem(0, col, item)  # 모델 첫번째 행에 해당하는 각 열에 아이템 설정
+
+        # Filtering 버튼 추가
+        check_button = QPushButton("Filtering")
+        self.blocktable.setIndexWidget(self.model.index(0, 0), check_button)
+        check_button.clicked.connect(self.onFilteringBtnClicked)
 
         for row in rows:
             index = row[0]
@@ -618,7 +711,7 @@ class UI_main(QMainWindow):
                     elif value == 1:
                         output_text = '부분 삭제'
                     elif value == 2:
-                        output_text = '삭제???' # 바꿔야 함
+                        output_text = '모든 데이터 삭제' # 바꿔야 함
                     elif value == 3:
                         output_text = '포맷'
                     elif value == 4:
@@ -634,6 +727,21 @@ class UI_main(QMainWindow):
                 self.model.setItem(self.model.rowCount() - 1, col + 1, item)  # 체크박스 추가 위해 col + 1
 
         connection.close()
+
+    def re_update_precise_scan(self):
+        # 트리에 파일 이름이 존재하는지 확인
+        #filename = filepath.split("/")[-1]
+        items_with_filename = self.tree.findItems(self.filename, Qt.MatchExactly, 0)
+
+        selected_item = items_with_filename[0]
+
+        print("Proceeding with precise scan.")
+        ps = Scan(self.filepath)  # 정밀스캔
+        ps.analyzer()  # db 생성
+
+        for i in range(selected_item.childCount()):
+            child_item = selected_item.child(i)
+            child_item.setFlags(child_item.flags() | Qt.ItemIsEnabled)
 
     # ======================= 3. Allocated =========================
     def update_allocated(self):
@@ -954,9 +1062,9 @@ class UI_main(QMainWindow):
             value_axis.setRange(min_value, max_value)  # 세로축의 범위 설정
 
             # layout
-
             self.button_layout.addWidget(self.show_daily_button, 1)
             self.button_layout.addWidget(self.show_monthly_button, 1)
+            self.button_layout.addWidget(self.show_yearly_button, 1)
             self.log_layout.addLayout(self.button_layout, 1)
 
             log_graph_widget = QChartView(chart)
@@ -970,10 +1078,10 @@ class UI_main(QMainWindow):
         except Exception as e:
             print(f"An error occurred in process_log_graph(): {e}")
 
-    def show_monthly_graph(self):
+    def show_graph(self, hi):
         try:
             self.clear_hex_layout()  # hexLayout 초기화
-            print("show_monthly_graph()")
+            print("show_graph()")
 
             db_filepath = './IDIS_FS_sqlite.db'
             connection = sqlite3.connect(db_filepath)
@@ -1020,18 +1128,25 @@ class UI_main(QMainWindow):
                 print("No data to display.")
                 return
 
-            # 변환
+            # Monthly, Yearly
             result_dict = {}
 
-            for formatted_date, event_counts in date_event_counts.items():
-                year_month = formatted_date.rsplit('-', 1)[0]  # 연도와 월 추출
-                if year_month not in result_dict:
-                    result_dict[year_month] = {event: 0 for event in events_to_consider}
+            if hi == "monthly":
+                for formatted_date, event_counts in date_event_counts.items():
+                    year_month = formatted_date.rsplit('-', 1)[0]  # 연도와 월 추출
+                    if year_month not in result_dict:
+                        result_dict[year_month] = {event: 0 for event in events_to_consider}
 
-                for event, count in event_counts.items():
-                    result_dict[year_month][event] += count
+                    for event, count in event_counts.items():
+                        result_dict[year_month][event] += count
+            elif hi == "yearly":
+                for formatted_date, event_counts in date_event_counts.items():
+                    year = formatted_date.split('-')[0]  # 연도
+                    if year not in result_dict:
+                        result_dict[year] = {event: 0 for event in events_to_consider}
 
-
+                    for event, count in event_counts.items():
+                        result_dict[year][event] += count
 
             # custom legend 매핑
             event_legend_mapping = {
@@ -1076,9 +1191,9 @@ class UI_main(QMainWindow):
             value_axis.setRange(min_value, max_value)  # 세로축의 범위 설정
 
             # layout
-
             self.button_layout.addWidget(self.show_daily_button, 1)
             self.button_layout.addWidget(self.show_monthly_button, 1)
+            self.button_layout.addWidget(self.show_yearly_button, 1)
             self.log_layout.addLayout(self.button_layout, 1)
 
             log_graph_widget = QChartView(chart)
@@ -1089,7 +1204,7 @@ class UI_main(QMainWindow):
             self.rightLayout.addLayout(self.hexLayout, 2)
 
         except Exception as e:
-            print(f"An error occurred in process_log_graph(): {e}")
+            print(f"An error occurred in show_graph(): {e}")
 
     def process_log_list(self, db_filepath):
         try:
@@ -1197,7 +1312,14 @@ class UI_main(QMainWindow):
 
                     item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
                     item.setTextAlignment(Qt.AlignCenter)
+
+                    # Association type 값이 0인 경우 1번째부터 4번째 컬럼을 병합
+                    if col == 14 and value == 0:
+                        self.blocktable.setSpan(row_index, 1, 1, 4)
+
                     self.model.setItem(row_index, col, item)
+
+
 
             connection.close()
         except Exception as e:
@@ -1303,6 +1425,7 @@ class UI_main(QMainWindow):
         filename = filepath.split("/")[-1]
         items_with_filename = self.tree.findItems(filename, Qt.MatchExactly, 0)
         print(items_with_filename)
+        self.filepath = filepath
 
         selected_item = items_with_filename[0]
 
@@ -1335,8 +1458,6 @@ class UI_main(QMainWindow):
             ps.analyzer()  # db 생성
 
         elif result == QMessageBox.No:
-            print("트리에 비활성화 시켜야")
-
             # 비활성화 처리
             for i in range(selected_item.childCount()):
                 child_item = selected_item.child(i)
@@ -1379,12 +1500,7 @@ class UI_main(QMainWindow):
             as_instance.parse()
 
         elif result == QMessageBox.No:
-            print("트리에 비활성화 시켜야")
-
-            # 비활성화 처리
-            for i in range(selected_item.childCount()):
-                child_item = selected_item.child(i)
-                child_item.setFlags(child_item.flags() & ~Qt.ItemIsEnabled)
+            pass
 
         else:
             print("User clicked No. Cancelling associated scan.")

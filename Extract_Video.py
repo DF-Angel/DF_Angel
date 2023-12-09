@@ -34,12 +34,13 @@ def hex_to_datetime_le(hex_value):
         logging.error(f"Invalid month value extracted: {month}")
         return None  # 또는 적절한 기본 날짜 반환
     
-def convert_h264_to_mp4(input_file, output_file):
+def convert_h264_to_mp4(input_file, output_file, speed_factor=5.0):
     try:
         (
             ffmpeg
             .input(input_file, format='h264')
-            .output(output_file, vcodec='copy')
+            .filter('setpts', f'{speed_factor}*PTS')
+            .output(output_file, vcodec='libx264', preset='ultrafast', threads='auto')
             .run(overwrite_output=True)
         )
         logging.info(f"변환 완료: {output_file}")
@@ -55,11 +56,11 @@ def little_endian_to_int(bytes_data):
 
 def extract_frames(db_filepath, image_filepath, selected_rows, output_folder):
     # 'Extracted' 폴더를 생성합니다.
-    '''
+    
     extracted_folder = os.path.join(output_folder, 'Extracted')
     if not os.path.isdir(extracted_folder):
         logging.info(f"Creating extracted folder at {extracted_folder}")
-        os.makedirs(extracted_folder, exist_ok=True)'''
+        os.makedirs(extracted_folder, exist_ok=True)
 
     connection = sqlite3.connect(db_filepath)
     logging.info(f"Database connected: {db_filepath}")
@@ -77,6 +78,10 @@ def extract_frames(db_filepath, image_filepath, selected_rows, output_folder):
         start_offset = start_offset_result[0]
         metadata_offset = start_offset + 0x100000
 
+        p_frames = 0
+        i_frame_found = False
+        i_frame_count = 0
+
         frame_data_file = os.path.join(output_folder, f'block_{index}.bin')  # 'Extracted' 폴더에 프레임 데이터 파일 저장
         index_file = os.path.join(output_folder, f'index_{index}.txt')  # 'Extracted' 폴더에 인덱스 파일 저장
 
@@ -88,6 +93,15 @@ def extract_frames(db_filepath, image_filepath, selected_rows, output_folder):
                 if metadata == b'\x00' * 32:
                     logging.info(f"All metadata bytes are zero at index {index}. Ending read.")
                     break
+
+                frame_type = metadata[26]
+                if frame_type == 0x00:  # I-frame
+                    if not i_frame_found:
+                        i_frame_found = True
+                    else:
+                        i_frame_count += 1
+                elif frame_type == 0x01 and i_frame_found:  # P-frame
+                    p_frames += 1
 
                 frame_start_point = little_endian_to_int(metadata[28:32])
                 frame_data_size = little_endian_to_int(metadata[16:20]) - 0x23
@@ -103,9 +117,13 @@ def extract_frames(db_filepath, image_filepath, selected_rows, output_folder):
 
                 metadata_offset += 32
 
+        frame_cycle = p_frames + 1 if i_frame_count == 0 else p_frames / i_frame_count
+        speed_factor = 25.0 / frame_cycle
+        logging.info(f"Speed factor for index {index}: {speed_factor}")
+
         # 모든 프레임 데이터가 추출된 후 MP4로 변환
         output_mp4_file = os.path.join(output_folder, 'Extracted', f'frames_{index}.mp4')
-        convert_h264_to_mp4(frame_data_file, output_mp4_file)
+        convert_h264_to_mp4(frame_data_file, output_mp4_file, speed_factor)
 
     connection.close()
     logging.info("Database connection closed.")
