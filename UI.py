@@ -18,6 +18,7 @@ from PyQt5.QtCore import Qt, QSortFilterProxyModel, QTime, QDateTime, QRegExp, p
 import sqlite3
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QRegExpValidator, QPainter
 from Extract_Video import main as extract_main
+from Precise_Extract_Video import main as precise_extract_main
 from LogParser import LogParser
 from Log_Association import Association
 from PyQt5.QtChart import QChart, QBarSet, QBarSeries, QChartView, QLineSeries, QDateTimeAxis, QValueAxis, QBarCategoryAxis
@@ -200,10 +201,24 @@ class UI_main(QMainWindow):
     def contextMenuEvent(self, event):
         menu = QMenu(self)
         extract_action = menu.addAction("Extract")
-        extract_action.triggered.connect(self.extract_selected_rows)
+        # 현재 선택된 탭이 'Precise Scan'인지 확인
+        if self.is_precise_scan_tab_selected():
+            extract_action.triggered.connect(self.precise_extract_selected_rows)
+        else:
+            extract_action.triggered.connect(self.extract_selected_rows)
 
         # 메뉴 실행
         menu.exec_(event.globalPos())
+
+    def is_precise_scan_tab_selected(self):
+        selected_items = self.tree.selectedItems()
+        if selected_items:
+            # 현재 선택된 항목의 이름을 가져옵니다.
+            selected_name = selected_items[0].text(0)
+            # 'Precise Scan' 탭이 선택되었는지 확인합니다.
+            return selected_name == "Precise Scan"
+        return False  # 선택된 항목이 없으면 False를 반환합니다.
+
 
     # Extract 저장 경로 설정
     def select_output_folder(self):
@@ -231,6 +246,22 @@ class UI_main(QMainWindow):
         extract_main(db_filepath, filepath, checked_indexes, Extract_dir)
 
         QMessageBox.information(self, 'Success', f'Extract success {filepath}.')
+    
+    # Precise Extract 기능
+    def precise_extract_selected_rows(self):
+        # 선택된 정밀 스캔 데이터의 인덱스 가져오기
+        checked_indexes = [int(self.model.item(row, 1).text()) for row in range(self.model.rowCount())
+                            if self.model.item(row, 0).checkState() == Qt.Checked]
+
+        if not checked_indexes:
+            QMessageBox.information(self, "Precise Extract", "No rows selected for extraction.")
+            return
+
+        # Precise_Extract_Video 실행
+        Extract_dir = os.path.join(case_directory, 'Extract')
+        db_filepath = './IDIS_FS_sqlite.db'
+        precise_extract_main(db_filepath, filepath, checked_indexes, Extract_dir)
+        QMessageBox.information(self, 'Success', f'Precise Extract success {filepath}.')
 
     # ======================= Case =========================
     def new_case(self):
