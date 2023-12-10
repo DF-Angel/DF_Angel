@@ -1,7 +1,6 @@
 import sqlite3
 from sqlite_db import insert_data_association
 
-
 class Association:
     def __init__(self, file_path):
         self.file_path = file_path
