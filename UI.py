@@ -6,6 +6,7 @@ from datetime import datetime
 import textwrap
 import traceback
 
+from PyQt5.QtGui import QIcon
 from Root_Scan import Root_Scan
 from Scan import Scan
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QMenuBar, QAction, QTreeView, QTreeWidget, QTreeWidgetItem,
@@ -21,7 +22,8 @@ from Extract_Video import main as extract_main
 from Precise_Extract_Video import main as precise_extract_main
 from LogParser import LogParser
 from Log_Association import Association
-from PyQt5.QtChart import QChart, QBarSet, QBarSeries, QChartView, QLineSeries, QDateTimeAxis, QValueAxis, QBarCategoryAxis
+from PyQt5.QtChart import QChart, QBarSet, QBarSeries, QChartView, QLineSeries, QDateTimeAxis, QValueAxis, \
+    QBarCategoryAxis
 from PyQt5.QtCore import QDate
 
 
@@ -31,9 +33,21 @@ class CustomSortFilterProxyModel(QSortFilterProxyModel):
         self.start_datetime = None
         self.end_datetime = None
 
+
 class UI_main(QMainWindow):
     def __init__(self):  # 생성자
         super().__init__()  # QMainWindow 초기화 호출
+
+        # Set window icon
+        icon_path = "icon.png"
+        original_icon = QIcon(icon_path)
+
+        # Get the pixmap from the original icon and set the new size
+        pixmap = original_icon.pixmap(100, 100)  # Set the desired width and height
+
+        # Create a new QIcon with the adjusted pixmap
+        adjusted_icon = QIcon(pixmap)
+        self.setWindowIcon(adjusted_icon)
 
         # 정렬 기능 위한
         self.model = QStandardItemModel()
@@ -88,18 +102,18 @@ class UI_main(QMainWindow):
         # layout -> left, right 두 영역으로 구분
         layout = QHBoxLayout(mainWidget)
         leftLayout = QVBoxLayout()  # 수직 (추가 요소 아래쪽에 추가)
-        #rightLayout = QVBoxLayout()  # 수직
+        # rightLayout = QVBoxLayout()  # 수직
 
         layout.addLayout(leftLayout, 1)
         layout.addLayout(self.rightLayout, 5)
 
         treeLayout = QVBoxLayout()
         mainLayout = QHBoxLayout()
-        #hexLayout = QHBoxLayout()
+        # hexLayout = QHBoxLayout()
 
-        #hexoffsetLayout = QVBoxLayout()
-        #hexdisplayLayout = QVBoxLayout()
-        #asciiLayout = QVBoxLayout()
+        # hexoffsetLayout = QVBoxLayout()
+        # hexdisplayLayout = QVBoxLayout()
+        # asciiLayout = QVBoxLayout()
 
         # 왼쪽 영역
         self.tree = QTreeWidget()
@@ -231,7 +245,6 @@ class UI_main(QMainWindow):
             return selected_name == "Precise Scan"
         return False  # 선택된 항목이 없으면 False를 반환합니다.
 
-
     # Extract 저장 경로 설정
     def select_output_folder(self):
         folder_path = QFileDialog.getExistingDirectory(self, "Select Output Folder")
@@ -244,26 +257,26 @@ class UI_main(QMainWindow):
     def extract_selected_rows(self):
         # 체크된 항목들의 인덱스를 가져옵니다.
         checked_indexes = [int(self.model.item(row, 1).text()) for row in range(self.model.rowCount())
-                        if self.model.item(row, 0).checkState() == Qt.Checked]
+                           if self.model.item(row, 0).checkState() == Qt.Checked]
 
         if not checked_indexes:
             QMessageBox.information(self, "Extract", "No rows selected for extraction.")
             return
 
         # 현재 스크립트와 동일한 경로에 추출된 비디오를 저장합니다.
-        #current_dir = os.path.dirname(os.path.abspath(__file__))
-        Extract_dir = os.path.join(case_directory,'Extract')
-        #current_dir = os.path.join()
+        # current_dir = os.path.dirname(os.path.abspath(__file__))
+        Extract_dir = os.path.join(case_directory, 'Extract')
+        # current_dir = os.path.join()
         db_filepath = './IDIS_FS_sqlite.db'
         extract_main(db_filepath, filepath, checked_indexes, Extract_dir)
 
         QMessageBox.information(self, 'Success', f'Extract success {filepath}.')
-    
+
     # Precise Extract 기능
     def precise_extract_selected_rows(self):
         # 선택된 정밀 스캔 데이터의 인덱스 가져오기
         checked_indexes = [int(self.model.item(row, 1).text()) for row in range(self.model.rowCount())
-                            if self.model.item(row, 0).checkState() == Qt.Checked]
+                           if self.model.item(row, 0).checkState() == Qt.Checked]
 
         if not checked_indexes:
             QMessageBox.information(self, "Precise Extract", "No rows selected for extraction.")
@@ -278,7 +291,8 @@ class UI_main(QMainWindow):
     # ======================= Case =========================
     def new_case(self):
         # 사용자가 생성할 케이스명 입력
-        case_name, ok = QInputDialog.getText(self, 'New Case', '<b>Enter case name</b>  <br>Next, select the path to the case file.')
+        case_name, ok = QInputDialog.getText(self, 'New Case',
+                                             '<b>Enter case name</b>  <br>Next, select the path to the case file.')
         self.casename = case_name  # casename 전역변수 저장
 
         if not ok or not case_name:
@@ -304,7 +318,8 @@ class UI_main(QMainWindow):
             os.makedirs(db_directory)
             os.makedirs(extract_directory)
 
-            QMessageBox.information(self, 'Success', f'Case "{case_name}" created successfully at {case_directory}. <br><br><b>Select the image you want to analyze.</b> ')
+            QMessageBox.information(self, 'Success',
+                                    f'Case "{case_name}" created successfully at {case_directory}. <br><br><b>Select the image you want to analyze.</b> ')
 
         else:
             QMessageBox.warning(self, 'Error', f'Case "{case_name}" already exists at {case_directory}.')
@@ -330,7 +345,6 @@ class UI_main(QMainWindow):
 
             # analyzer 메소드 호출해 파일 분석, db 생성
             rs.analyzer()
-
 
             if filepath:
                 item = QTreeWidgetItem(self.tree)  # 새로운 트리 항목(item) 생성
@@ -421,7 +435,7 @@ class UI_main(QMainWindow):
         self.model.setHorizontalHeaderLabels(
             ["Check", "Index", "Block", "Channel", "Start Time", "End Time", "Start Offset", "End Offset", "Size"])
 
-        self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive) # 사용자 조절 가능
+        self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)  # 사용자 조절 가능
         self.blocktable.horizontalHeader().resizeSection(0, 60)
         self.blocktable.horizontalHeader().resizeSection(1, 60)
         self.blocktable.horizontalHeader().resizeSection(2, 60)
@@ -452,7 +466,7 @@ class UI_main(QMainWindow):
             self.model.setItem(0, col, item)  # 모델 첫번째 행에 해당하는 각 열에 아이템 설정
 
         # Filtering 버튼 추가
-        check_button = QPushButton("Filtering")
+        check_button = QPushButton("Search")
         self.blocktable.setIndexWidget(self.model.index(0, 0), check_button)
         check_button.clicked.connect(self.onFilteringBtnClicked)
 
@@ -557,9 +571,10 @@ class UI_main(QMainWindow):
             if filter_block == '' and filter_channel == '' and filter_start_time == '' and filter_end_time == '':
                 pass
             else:
-                #if filter_start_time == '':
-                    #print("hi")
-                print(f"Block: {filter_block}, Filtered Channel: {filter_channel}, Start time: {filter_start_time}, End time: {filter_end_time}")
+                # if filter_start_time == '':
+                # print("hi")
+                print(
+                    f"Block: {filter_block}, Filtered Channel: {filter_channel}, Start time: {filter_start_time}, End time: {filter_end_time}")
 
                 self.filtered_data(filter_block, filter_channel, filter_start_time, filter_end_time)
 
@@ -596,7 +611,8 @@ class UI_main(QMainWindow):
 
                 self.model.setColumnCount(9)  # 모델에 있는 컬럼 수 설정
                 self.model.setHorizontalHeaderLabels(
-                    ["Check", "Index", "Block", "Channel", "Start Time", "End Time", "Start Offset", "End Offset", "Size"])
+                    ["Check", "Index", "Block", "Channel", "Start Time", "End Time", "Start Offset", "End Offset",
+                     "Size"])
                 self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)  # 사용자 조절 가능
                 self.blocktable.horizontalHeader().resizeSection(0, 60)
                 self.blocktable.horizontalHeader().resizeSection(1, 60)
@@ -612,7 +628,7 @@ class UI_main(QMainWindow):
                     self.model.setItem(0, col, item)  # 모델 첫번째 행에 해당하는 각 열에 아이템 설정
 
                 # Filtering 버튼 추가
-                Filtering_btn = QPushButton("Filtering")
+                Filtering_btn = QPushButton("Search")
                 self.blocktable.setIndexWidget(self.model.index(0, 0), Filtering_btn)
                 Filtering_btn.clicked.connect(self.onFilteringBtnClicked)
 
@@ -676,7 +692,7 @@ class UI_main(QMainWindow):
             self.model.setItem(0, col, item)  # 모델 첫번째 행에 해당하는 각 열에 아이템 설정
 
         # Filtering 버튼 추가
-        check_button = QPushButton("Filtering")
+        check_button = QPushButton("Search")
         self.blocktable.setIndexWidget(self.model.index(0, 0), check_button)
         check_button.clicked.connect(self.onFilteringBtnClicked)
 
@@ -705,13 +721,13 @@ class UI_main(QMainWindow):
                 item = QStandardItem()
                 if col == 0 or col == 2:  # index와 name에 대한 값들은 int로 설정
                     item.setData(int(value), Qt.DisplayRole)  # Qt.DisplayRole: 모델 데이터를 표시할 때 사용
-                elif col == 10: # del_type 매칭
+                elif col == 10:  # del_type 매칭
                     if value == 0:
                         output_text = '할당'
                     elif value == 1:
                         output_text = '부분 삭제'
                     elif value == 2:
-                        output_text = '모든 데이터 삭제' # 바꿔야 함
+                        output_text = '모든 데이터 삭제'  # 바꿔야 함
                     elif value == 3:
                         output_text = '포맷'
                     elif value == 4:
@@ -730,7 +746,7 @@ class UI_main(QMainWindow):
 
     def re_update_precise_scan(self):
         # 트리에 파일 이름이 존재하는지 확인
-        #filename = filepath.split("/")[-1]
+        # filename = filepath.split("/")[-1]
         items_with_filename = self.tree.findItems(self.filename, Qt.MatchExactly, 0)
 
         selected_item = items_with_filename[0]
@@ -921,20 +937,26 @@ class UI_main(QMainWindow):
                 # self.logfilepath = logfilepath.split("/")[-1]  # 경로에서 파일 이름만 추출해 전역변수 저장
 
                 if logfilepath:
+                    # 화면이 처리 중임을 나타내는 메시지 창 표시
+                    processing_msg = "로그 파일 처리 중입니다. 잠시만 기다려주세요..."
+                    QMessageBox.information(self, "처리 중", processing_msg, QMessageBox.Ok)
+
                     log = LogParser(logfilepath)  # LogParser()에 경로 넘기고 객체로 받기
 
                     log.parse()  # DB 생성?
 
-                db_filepath = './IDIS_FS_sqlite.db'
-                self.update_log(db_filepath)  # 로그 처리 메서드 호출
-                self.show_warning_message_log(db_filepath)
+                    db_filepath = './IDIS_FS_sqlite.db'
+                    self.update_log(db_filepath)  # 로그 처리 메서드 호출
+                    self.show_warning_message_log(db_filepath)
 
-                self.logfile_opened = True
+                    self.logfile_opened = True
+
+
+
 
             else:
                 db_filepath = './IDIS_FS_sqlite.db'
                 self.update_log(db_filepath)
-
 
         except Exception as e:
             print(f"An error occurred in open_logfile: {e}")
@@ -955,7 +977,7 @@ class UI_main(QMainWindow):
             self.process_log_list(db_filepath)  # db 리스트 생성
 
             # 그래프
-            self.clear_hex_layout() # hexLayout 초기화
+            self.clear_hex_layout()  # hexLayout 초기화
             self.process_log_graph()  # db 그래프 생성
 
             '''
@@ -991,7 +1013,8 @@ class UI_main(QMainWindow):
             date_range = [row[0] for row in date_result]
 
             # Dictionary to store date counts for each event
-            date_event_counts = {formatted_date: {event: 0 for event in events_to_consider} for formatted_date in date_range}
+            date_event_counts = {formatted_date: {event: 0 for event in events_to_consider} for formatted_date in
+                                 date_range}
 
             # Query to get count of events per date (considering only year-month-day)
             for event in events_to_consider:
@@ -1030,7 +1053,7 @@ class UI_main(QMainWindow):
             # 각 이벤트의 bar series 생성
             series_list = []
             for event in events_to_consider:
-                bar_set = QBarSet(event_legend_mapping.get(event, event)) # 범례
+                bar_set = QBarSet(event_legend_mapping.get(event, event))  # 범례
                 for formatted_date, event_counts in date_event_counts.items():
                     bar_set.append(event_counts[event])
                 series = QBarSeries()
@@ -1224,7 +1247,7 @@ class UI_main(QMainWindow):
             # 모든 데이터 처리
             for row_index, row in enumerate(rows):
                 for col, value in enumerate(row):
-                    #print(f"Processing column {col}: {value}")
+                    # print(f"Processing column {col}: {value}")
                     item = QStandardItem()
                     if col == 0:  # index -> int
                         item.setData(int(value), Qt.DisplayRole)  # Qt.DisplayRole: 모델 데이터를 표시할 때 사용
@@ -1265,7 +1288,6 @@ class UI_main(QMainWindow):
         try:
             print("update_associated_scan()")
 
-            # 리스트
             self.model.clear()
             self.model.setColumnCount(15)  # 모델 컬럼 수 설정
             self.model.setHorizontalHeaderLabels(
@@ -1279,7 +1301,7 @@ class UI_main(QMainWindow):
             self.blocktable.horizontalHeader().resizeSection(5, 140)
 
             db_filepath = './IDIS_FS_sqlite.db'
-            self.process_associated_scan(db_filepath)  # db 접근
+            self.process_associated_scan(db_filepath) # db 접근
 
         except Exception as e:
             print(f"An error occurred in update_associated_scan(): {e}")
@@ -1291,22 +1313,46 @@ class UI_main(QMainWindow):
             connection = sqlite3.connect(db_filepath)
             cursor = connection.cursor()
 
-            # LOG 테이블 데이터 검색
             query = "SELECT * FROM ASSOCIATION"
             cursor.execute(query)
             rows = cursor.fetchall()  # 각 행 rows 리스트에 저장
-            #print(rows)
 
-            # 기존 데이터 제거
-            self.model.removeRows(0, self.model.rowCount())
+            # 필터링 행 추가
+            for col in range(self.model.columnCount()):  # 모델 열 개수
+                item = QStandardItem("")  # 각 열에 해당하는 새로운 아이템 생성
+                item.setFlags(Qt.ItemIsEditable | Qt.ItemIsEnabled)  # 편집 가능하고 활성화
+                self.model.setItem(0, col, item)  # 모델 첫번째 행에 해당하는 각 열에 아이템 설정
+
+            # Filtering 버튼 추가
+            search_button = QPushButton("Search")
+            self.blocktable.setIndexWidget(self.model.index(0, 0), search_button)
+            search_button.clicked.connect(self.as_onFilteringBtnClicked)
 
             # 모든 데이터 처리
             for row_index, row in enumerate(rows):
+                self.model.insertRow(self.model.rowCount())  # 새로운 행 삽입
+                search_item = QStandardItem()  # 아이템 생성
+                search_item.setTextAlignment(Qt.AlignCenter)  # 가운데 정렬
+                self.model.setItem(self.model.rowCount() - 1, 0, search_item)  # 첫 번째 열에 추가
+
                 for col, value in enumerate(row):
-                    #print(f"Processing column {col}: {value}")
                     item = QStandardItem()
                     if col == 0:  # index -> int
                         item.setData(int(value), Qt.DisplayRole)  # Qt.DisplayRole: 모델 데이터를 표시할 때 사용
+                    elif col == 10:  # del_type 매칭
+                        if value == 0:
+                            output_text = '할당'
+                        elif value == 1:
+                            output_text = '부분 삭제'
+                        elif value == 2:
+                            output_text = '모든 데이터 삭제'  # 바꿔야 함
+                        elif value == 3:
+                            output_text = '포맷'
+                        elif value == 4:
+                            output_text = '슬랙'
+                        else:
+                            output_text = ''
+                        item.setData(output_text, Qt.DisplayRole)
                     else:
                         item.setData(value, Qt.DisplayRole)
 
@@ -1319,11 +1365,126 @@ class UI_main(QMainWindow):
 
                     self.model.setItem(row_index, col, item)
 
-
-
             connection.close()
         except Exception as e:
             print(f"An error occurred in process_associated_scan(): {e}")
+
+    def as_onFilteringBtnClicked(self):
+        print("Filtering button clicked")
+        self.as_filtering_method()
+
+    # 필터링 데이터 전달
+    def as_filtering_method(self):
+        try:
+            # 실제 데이터 추출
+            filter_index = self.model.item(0, 0).data(Qt.DisplayRole)
+            filter_event = self.model.item(0, 1).data(Qt.DisplayRole)
+            filter_block = self.model.item(0, 2).data(Qt.DisplayRole)
+            filter_channel = self.model.item(0, 3).data(Qt.DisplayRole)
+            filter_start_time = self.model.item(0, 4).data(Qt.DisplayRole)
+            filter_end_time = self.model.item(0, 5).data(Qt.DisplayRole)
+            filter_duration = self.model.item(0, 6).data(Qt.DisplayRole)
+            filter_start_offset = self.model.item(0, 7).data(Qt.DisplayRole)
+            filter_end_offset = self.model.item(0, 8).data(Qt.DisplayRole)
+            filter_size = self.model.item(0, 9).data(Qt.DisplayRole)
+            filter_del_type = self.model.item(0, 10).data(Qt.DisplayRole)
+            filter_iframe = self.model.item(0, 11).data(Qt.DisplayRole)
+            filter_pframe = self.model.item(0, 12).data(Qt.DisplayRole)
+
+            if filter_block == '' and filter_channel == '' and filter_start_time == '' and filter_end_time == '' and filter_del_type == '':
+                pass
+            else:
+                print("hi")
+                self.filtered_data(filter_block, filter_channel, filter_start_time, filter_end_time, filter_del_type)
+
+        except Exception as e:
+            print(f"filtering_method() exception occurred: {e}")
+
+    # 필터링 결과 출력
+    def as_filtered_data(self, filter_block, filter_channel, filter_start_time, filter_end_time, filter_del_type):
+        try:
+            connection = sqlite3.connect('./IDIS_FS_sqlite.db')
+            cursor = connection.cursor()
+
+            # Channel 및 Block 열에서 filter_channel과 filter_block과 일치하는 행을 가져옴
+            query = f"SELECT * FROM ASSOCIATION WHERE"
+            if filter_block != '':
+                query += f" NAME = '{filter_block}' OR"
+            if filter_channel != '':
+                query += f" CH = '{filter_channel}' OR"
+            if filter_start_time != '':
+                query += f" START_TIME LIKE '%{filter_start_time}%' OR"
+            if filter_end_time != '':
+                query += f" END_TIME LIKE '%{filter_end_time}%' OR"
+            if filter_del_type != '':
+                query += f" DEL_TYPE LIKE '%{filter_del_type}%' OR"
+            query = query.rstrip(" OR")
+
+            cursor.execute(query)
+            rows = cursor.fetchall()  # 각 행이 result 리스트에 저장됨
+
+            connection.close()
+
+            # 결과를 모델에 추가하기 전에 기존 데이터 제거
+            self.model.clear()
+            self.model.setColumnCount(15)  # 모델 컬럼 수 설정
+            self.model.setHorizontalHeaderLabels(
+                ["Index", "Event", "Block", "Channel", "Start time", "End time", "Duration", "Start offset",
+                 "End offset", "Size", "Del type", "I-frame", "P-frame", "Is it del", "Association type"])
+            self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)  # 사용자 조절 가능
+            self.blocktable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+            self.blocktable.horizontalHeader().resizeSection(0, 60)
+            self.blocktable.horizontalHeader().resizeSection(1, 250)
+            self.blocktable.horizontalHeader().resizeSection(4, 140)
+            self.blocktable.horizontalHeader().resizeSection(5, 140)
+
+            # 테이블 상단에 필터링 행 추가
+            for col in range(self.model.columnCount()):  # 모델 열 개수
+                item = QStandardItem("")  # 각 열에 해당하는 새로운 아이템 생성
+                item.setFlags(Qt.ItemIsEditable | Qt.ItemIsEnabled)  # 편집 가능하고 활성화
+                self.model.setItem(0, col, item)  # 모델 첫번째 행에 해당하는 각 열에 아이템 설정
+
+            # Filtering 버튼 추가
+            Filtering_btn = QPushButton("Search")
+            self.blocktable.setIndexWidget(self.model.index(0, 0), Filtering_btn)
+            Filtering_btn.clicked.connect(self.onFilteringBtnClicked)
+
+            # 결과를 모델에 추가
+            for row_index, row in enumerate(rows):
+                self.model.insertRow(self.model.rowCount())  # 새로운 행 삽입
+
+                for col, value in enumerate(row):
+                    item = QStandardItem()  # 항상 문자열이 들어가야
+                    if col == 0:  # index와 name에 대한 값들은 int로 설정
+                        item.setData(int(value), Qt.DisplayRole)  # Qt.DisplayRole: 모델 데이터를 표시할 때 사용
+                    elif col == 10:  # del_type 매칭
+                        if value == 0:
+                            output_text = '할당'
+                        elif value == 1:
+                            output_text = '부분 삭제'
+                        elif value == 2:
+                            output_text = '모든 데이터 삭제'  # 바꿔야 함
+                        elif value == 3:
+                            output_text = '포맷'
+                        elif value == 4:
+                            output_text = '슬랙'
+                        else:
+                            output_text = ''
+                        item.setData(output_text, Qt.DisplayRole)
+                    else:
+                        item.setData(value, Qt.DisplayRole)
+                    item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
+                    item.setTextAlignment(Qt.AlignCenter)
+
+                    # Association type 값이 0인 경우 1번째부터 4번째 컬럼을 병합
+                    if col == 14 and value == 0:
+                        self.blocktable.setSpan(row_index, 1, 1, 4)
+
+                    self.model.setItem(row_index, col, item)
+
+
+        except Exception as e:
+            print(f"filtered_data() exception occurred: {e}")
 
     # ======================= Tree =========================
     def on_tree_select(self):
@@ -1348,7 +1509,7 @@ class UI_main(QMainWindow):
                     self.update_unallocated()
 
                 elif selected_name == "Log":
-                    self.open_logfile() # 최초만 !
+                    self.open_logfile()  # 최초만 !
 
                 elif selected_name == "Associated Scan":
                     self.update_associated_scan()
@@ -1404,7 +1565,7 @@ class UI_main(QMainWindow):
         self.hex_offset.verticalScrollBar().setValue(ascii_display_scroll_value)
     '''
 
-    #======================= Warning =========================
+    # ======================= Warning =========================
     def show_warning_message(self, filepath):
         # Add a warning message
         warning_message = QMessageBox()
@@ -1512,6 +1673,7 @@ class UI_main(QMainWindow):
             print("No button clicked.")
         else:
             print("Unknown button clicked.")
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)  # PyQt 애플리케이션 시작위해 PyQt의 QApplication 클래스를 인스턴스화

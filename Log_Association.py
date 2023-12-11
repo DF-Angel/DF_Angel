@@ -23,8 +23,10 @@ class Association:
             query_log = """
             SELECT EVENT, NULL, NULL, NULL, DATETIME, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0
             FROM LOG
-            WHERE (EVENT LIKE '%삭제%' OR EVENT LIKE '%포맷%' OR EVENT LIKE '%클립%' OR EVENT LIKE '%시스템%' OR EVENT LIKE '%설정 변경%')
+            WHERE (EVENT LIKE '%삭제%' OR EVENT LIKE '%포맷%')
+            AND EVENT NOT LIKE '%부분 삭제 시작%'
             AND EVENT NOT LIKE '%부분 삭제 종료%'
+            OR EVENT LIKE '%부분 삭제 시작 :%'
             """
 
             cursor.execute(query_log)
@@ -49,13 +51,53 @@ class Association:
                     combined_results.append(row)
 
             for datetime_value, camera_numbers in combined_dict.items():
-                formatted_row = ("부분 삭제 카메라 : CAM " + ', '.join(camera_numbers), None, None, None, datetime_value, None, None, None, None, None, None, None, None, 0)
+                formatted_row = (
+                "부분 삭제 카메라 : CAM " + ', '.join(camera_numbers), None, None, None, datetime_value, None, None, None,
+                None, None, None, None, None, 0)
                 combined_results.append(formatted_row)
 
-            combined_results = sorted(combined_results, key=lambda x: x[4])
+            combined_results.sort(key=lambda x: x[4])
+
+            for i, row in enumerate(combined_results):
+                if "부분 삭제 시작" in row[0]:
+                    start_row = row
+                    camera_row = None
+                    user_row = None
+
+                    for j in range(i + 1, len(combined_results)):
+                        if "부분 삭제 카메라" in combined_results[j][0]:
+                            camera_row = combined_results[j]
+                        elif "부분 삭제 사용자" in combined_results[j][0]:
+                            user_row = combined_results[j]
+                        elif "부분 삭제 마침" in combined_results[j][0]:
+                            break
+
+                    if camera_row and user_row:
+                        datetime_value = row[4]
+                        datetime1 = start_row[0].split(': ')[-1].split(' /')[0].strip()
+                        combined_results[i] = (
+                            f"{start_row[0]} / {camera_row[0]} / {user_row[0]} / 부분 삭제 행위 : {datetime_value}",
+                            *((start_row[j] if start_row[j] is not None else None) for j in range(1, 4)),
+                            datetime1, None,
+                            *((start_row[j] if start_row[j] is not None else None) for j in range(6, len(start_row)))
+                        )
+
+                        combined_results.pop(i + 1)
+                        combined_results.pop(i + 1)
+
+                elif "부분 삭제 마침" in row[0]:
+                    datetime_value = row[4]
+                    datetime2 = row[0].split(': ')[-1].split(' /')[0].strip()
+                    combined_results[i] = (
+                        f"{row[0]} / 부분 삭제 행위 : {datetime_value}",
+                        *((row[j] if row[j] is not None else None) for j in range(1, 4)),
+                        datetime2, None,
+                        *((row[j] if row[j] is not None else None) for j in range(6, len(row)))
+                    )
+            combined_results.sort(key=lambda x: x[4])
 
             for row in combined_results:
-                #print(row)
+                print(row)
                 try:
                     insert_data_association(row)
                 except Exception as e:
@@ -66,3 +108,7 @@ class Association:
 
         finally:
             connection.close()
+
+
+association_instance = Association("./IDIS_FS_sqlite.db")
+association_instance.parse()

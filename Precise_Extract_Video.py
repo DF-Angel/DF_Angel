@@ -88,7 +88,7 @@ def main(db_filepath, image_filepath, selected_indexes, output_folder='output'):
     extract_data_from_db(db_filepath, image_filepath, output_folder, selected_indexes)
 
 if __name__ == "__main__":
-    db_filepath = 'IDIS_FS_sqlite.db'
+    db_filepath = '../IDIS_FS_sqlite.db'
     selected_indexes = [1, 2]  # 추출할 데이터의 인덱스 목록
     output_folder = 'output'  # 출력 폴더 경로
     main(db_filepath, selected_indexes, output_folder)
