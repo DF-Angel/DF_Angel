@@ -19,7 +19,7 @@ from PyQt5.QtCore import Qt, QSortFilterProxyModel, QTime, QDateTime, QRegExp, p
 import sqlite3
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QRegExpValidator, QPainter
 from Extract_Video import main as extract_main
-#from Precise_Extract_Video import main as precise_extract_main
+from Precise_Extract_Video import main as precise_extract_main
 from LogParser import LogParser
 from Log_Association import Association
 from PyQt5.QtChart import QChart, QBarSet, QBarSeries, QChartView, QLineSeries, QDateTimeAxis, QValueAxis, \
@@ -285,7 +285,7 @@ class UI_main(QMainWindow):
         # Precise_Extract_Video 실행
         Extract_dir = os.path.join(case_directory, 'Extract')
         db_filepath = './IDIS_FS_sqlite.db'
-        #precise_extract_main(db_filepath, filepath, checked_indexes, Extract_dir)
+        precise_extract_main(db_filepath, filepath, checked_indexes, Extract_dir)
         QMessageBox.information(self, 'Success', f'Precise Extract success {filepath}.')
 
     # ======================= Case =========================
