@@ -694,7 +694,7 @@ class UI_main(QMainWindow):
         # Filtering 버튼 추가
         check_button = QPushButton("Search")
         self.blocktable.setIndexWidget(self.model.index(0, 0), check_button)
-        check_button.clicked.connect(self.onFilteringBtnClicked)
+        check_button.clicked.connect(self.ps_onFilteringBtnClicked)
 
         for row in rows:
             index = row[0]
@@ -715,25 +715,40 @@ class UI_main(QMainWindow):
             self.model.insertRow(self.model.rowCount())  # 새로운 행 삽입
             checkbox_item = QStandardItem()  # 체크박스 아이템 생성
             checkbox_item.setCheckable(True)  # 체크 가능하도록 설정
+            checkbox_item.setCheckState(Qt.Unchecked)  # 체크 상태 설정
+            checkbox_item.setTextAlignment(Qt.AlignCenter)  # 가운데 정렬 설정
             self.model.setItem(self.model.rowCount() - 1, 0, checkbox_item)  # 체크박스를 첫 번째 열에 추가
+
 
             for col, value in enumerate(row):
                 item = QStandardItem()
                 if col == 0 or col == 2:  # index와 name에 대한 값들은 int로 설정
                     item.setData(int(value), Qt.DisplayRole)  # Qt.DisplayRole: 모델 데이터를 표시할 때 사용
+                elif col == 3:
+                    if value == -1:
+                        output_text = 'Unknown'
+                        item.setData(output_text, Qt.DisplayRole)
+                    else:
+                        item.setData(value, Qt.DisplayRole)
                 elif col == 10:  # del_type 매칭
                     if value == 0:
                         output_text = '할당'
                     elif value == 1:
                         output_text = '부분 삭제'
                     elif value == 2:
-                        output_text = '모든 데이터 삭제'  # 바꿔야 함
+                        output_text = '모든 데이터 삭제, 부분 삭제, 자동 삭제'  # 바꿔야 함
                     elif value == 3:
                         output_text = '포맷'
                     elif value == 4:
                         output_text = '슬랙'
                     else:
                         output_text = '알 수 없음'
+                    item.setData(output_text, Qt.DisplayRole)
+                elif col == 13: # 삭제 여부
+                    if value == 0:
+                        output_text = 'X'
+                    else:
+                        output_text = 'O'
                     item.setData(output_text, Qt.DisplayRole)
                 else:
                     item.setData(value, Qt.DisplayRole)
@@ -758,6 +773,150 @@ class UI_main(QMainWindow):
         for i in range(selected_item.childCount()):
             child_item = selected_item.child(i)
             child_item.setFlags(child_item.flags() | Qt.ItemIsEnabled)
+
+    def ps_onFilteringBtnClicked(self):
+        print("Filtering button clicked")
+        self.ps_filtering_method()
+
+    # 필터링 데이터 전달
+    def ps_filtering_method(self):
+        try:
+            # 각 0행 1열 아이템 객체 추출
+            name_item = self.model.item(0, 2)
+            block_item = self.model.item(0, 3)
+            channel_item = self.model.item(0, 4)
+            start_time_item = self.model.item(0, 5)
+            end_time_item = self.model.item(0, 6)
+            del_type_item = self.model.item(0, 11)
+
+            # 실제 데이터 추출
+            filter_name = name_item.data(Qt.DisplayRole)
+            filter_block = block_item.data(Qt.DisplayRole)
+            filter_channel = channel_item.data(Qt.DisplayRole)
+            filter_start_time = start_time_item.data(Qt.DisplayRole)
+            filter_end_time = end_time_item.data(Qt.DisplayRole)
+            filter_del_type = del_type_item.data(Qt.DisplayRole)
+
+            if filter_name == '' and filter_block == '' and filter_channel == '' and filter_start_time == '' and filter_end_time == '' and filter_del_type == '':
+                pass
+            else:
+                print("hi")
+                print(
+                    f"Name: {filter_name}, Block: {filter_block}, Filtered Channel: {filter_channel}, Start time: {filter_start_time}, End time: {filter_end_time}, Del type: {filter_del_type}")
+                self.ps_filtered_data(filter_name, filter_block, filter_channel, filter_start_time, filter_end_time, filter_del_type)
+
+        except Exception as e:
+            print(f"ps_filtering_method() exception occurred: {e}")
+
+    # 필터링 결과 출력
+    def ps_filtered_data(self, filter_name, filter_block, filter_channel, filter_start_time, filter_end_time, filter_del_type):
+        try:
+            # SQLite 데이터베이스 연결
+            connection = sqlite3.connect('./IDIS_FS_sqlite.db')
+            cursor = connection.cursor()
+
+            # Channel 및 Block 열에서 filter_channel과 filter_block과 일치하는 행을 가져옴
+            query = f"SELECT * FROM PRECISE_SCAN WHERE"
+            if filter_name != '':
+                query += f" NAME LIKE '%{filter_name}%' OR"
+            if filter_block != '':
+                query += f" BLOCK = '{filter_block}' OR"
+            if filter_channel != '':
+                query += f" CH = '{filter_channel}' OR"
+            if filter_start_time != '':
+                query += f" START_TIME LIKE '%{filter_start_time}%' OR"
+            if filter_end_time != '':
+                query += f" END_TIME LIKE '%{filter_end_time}%' OR"
+            if filter_del_type != '':
+                if '부분' in filter_del_type:
+                    query += f" DEL_TYPE = 1 OR"
+                    query += f" DEL_TYPE = 2 OR"
+                if '모든' in filter_del_type:
+                    query += f" DEL_TYPE = 2 OR"
+                if '자동' in filter_del_type:
+                    query += f" DEL_TYPE = 2 OR"
+                if '포맷' in filter_del_type:
+                    query += f" DEL_TYPE = 3 OR"
+                if '슬랙' in filter_del_type:
+                    query += f" DEL_TYPE = 4 OR"
+
+            query = query.rstrip(" OR")
+
+            cursor.execute(query)
+            result = cursor.fetchall()  # 각 행이 result 리스트에 저장됨
+            print(query)
+            connection.close()
+
+            # 결과를 모델에 추가하기 전에 기존 데이터 제거
+            self.model.clear()
+
+            self.model.setColumnCount(15)  # 모델에 있는 컬럼 수 설정
+            self.model.setHorizontalHeaderLabels(
+                ["Check", "Index", "Name", "Block", "Channel", "Start Time", "End Time", "Duration", "Start Offset",
+                 "End Offset", "Size", "Del Type", "I-Frame", "P-Frame", "삭제 여부"])
+            self.blocktable.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)  # 사용자 조절 가능
+            self.blocktable.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+            self.blocktable.horizontalHeader().resizeSection(0, 60)
+            self.blocktable.horizontalHeader().resizeSection(1, 60)
+            self.blocktable.horizontalHeader().resizeSection(2, 60)
+            self.blocktable.horizontalHeader().resizeSection(3, 60)
+            self.blocktable.horizontalHeader().resizeSection(4, 60)
+            self.blocktable.horizontalHeader().resizeSection(5, 140)
+            self.blocktable.horizontalHeader().resizeSection(6, 140)
+
+            # 테이블 상단에 필터링 행 추가
+            for col in range(self.model.columnCount()):  # 모델 열 개수
+                item = QStandardItem("")  # 각 열에 해당하는 새로운 아이템 생성
+                item.setFlags(Qt.ItemIsEditable | Qt.ItemIsEnabled)  # 편집 가능하고 활성화
+                self.model.setItem(0, col, item)  # 모델 첫번째 행에 해당하는 각 열에 아이템 설정
+
+            # Filtering 버튼 추가
+            Filtering_btn = QPushButton("Search")
+            self.blocktable.setIndexWidget(self.model.index(0, 0), Filtering_btn)
+            Filtering_btn.clicked.connect(self.onFilteringBtnClicked)
+
+            # 결과를 모델에 추가
+            for row in result:
+                self.model.insertRow(self.model.rowCount())  # 새로운 행 삽입
+
+                checkbox_item = QStandardItem()  # 체크박스 아이템 생성
+                checkbox_item.setCheckable(True)  # 체크 가능하도록 설정
+                self.model.setItem(self.model.rowCount() - 1, 0, checkbox_item)  # 체크박스를 첫 번째 열에 추가
+
+                for col, value in enumerate(row):
+                    item = QStandardItem()  # 항상 문자열이 들어가야
+                    if col == 0 or col == 2:  # index에 대한 값들은 int로 설정
+                        item.setData(int(value), Qt.DisplayRole)  # Qt.DisplayRole: 모델 데이터를 표시할 때 사용
+                    elif col == 10:  # del_type 매칭
+                        if value == 0:
+                            output_text = '할당'
+                        elif value == 1:
+                            output_text = '부분 삭제'
+                        elif value == 2:
+                            output_text = '모든 데이터 삭제, 부분 삭제, 자동 삭제'  # 바꿔야 함
+                        elif value == 3:
+                            output_text = '포맷'
+                        elif value == 4:
+                            output_text = '슬랙'
+                        else:
+                            output_text = ''
+                        item.setData(output_text, Qt.DisplayRole)
+                    elif col == 13:  # 삭제 여부
+                        if value == 0:
+                            output_text = 'X'
+                        else:
+                            output_text = 'O'
+                        item.setData(output_text, Qt.DisplayRole)
+                    else:
+                        item.setData(value, Qt.DisplayRole)
+                    item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # 편집 불가능 플래그 설정
+                    item.setTextAlignment(Qt.AlignCenter)
+                    self.model.setItem(self.model.rowCount() - 1, col + 1, item)  # 체크박스 추가 위해 col + 1
+
+
+        except Exception as e:
+            print(f"ps_filtered_data() exception occurred: {e}")
+
 
     # ======================= 3. Allocated =========================
     def update_allocated(self):
@@ -822,13 +981,19 @@ class UI_main(QMainWindow):
                         elif value == 1:
                             output_text = '부분 삭제'
                         elif value == 2:
-                            output_text = '모든 데이터 삭제'
+                            output_text = '모든 데이터 삭제, 부분 삭제, 자동 삭제'
                         elif value == 3:
                             output_text = '포맷'
                         elif value == 4:
                             output_text = '슬랙'
                         else:
                             output_text = '알 수 없음'
+                        item.setData(output_text, Qt.DisplayRole)
+                    elif col == 13:  # 삭제 여부
+                        if value == 0:
+                            output_text = 'X'
+                        else:
+                            output_text = 'O'
                         item.setData(output_text, Qt.DisplayRole)
                     else:
                         item.setData(value, Qt.DisplayRole)
@@ -906,13 +1071,19 @@ class UI_main(QMainWindow):
                         elif value == 1:
                             output_text = '부분 삭제'
                         elif value == 2:
-                            output_text = '모든 데이터 삭제'
+                            output_text = '모든 데이터 삭제, 부분 삭제, 자동 삭제'
                         elif value == 3:
                             output_text = '포맷'
                         elif value == 4:
                             output_text = '슬랙'
                         else:
                             output_text = '알 수 없음'
+                        item.setData(output_text, Qt.DisplayRole)
+                    elif col == 13:  # 삭제 여부
+                        if value == 0:
+                            output_text = 'X'
+                        else:
+                            output_text = 'O'
                         item.setData(output_text, Qt.DisplayRole)
                     else:
                         item.setData(value, Qt.DisplayRole)
@@ -1036,7 +1207,7 @@ class UI_main(QMainWindow):
             date_event_counts = {formatted_date: event_counts for formatted_date, event_counts in
                                  date_event_counts.items() if any(event_counts.values())}
 
-            print(date_event_counts)
+            #print(date_event_counts)
 
             if not date_event_counts:
                 print("No data to display.")
@@ -1429,13 +1600,19 @@ class UI_main(QMainWindow):
                         elif value == 1:
                             output_text = '부분 삭제'
                         elif value == 2:
-                            output_text = '모든 데이터 삭제'  # 바꿔야 함
+                            output_text = '모든 데이터 삭제, 부분 삭제, 자동 삭제'  # 바꿔야 함
                         elif value == 3:
                             output_text = '포맷'
                         elif value == 4:
                             output_text = '슬랙'
                         else:
                             output_text = ''
+                        item.setData(output_text, Qt.DisplayRole)
+                    elif col == 13:  # 삭제 여부
+                        if value == 0:
+                            output_text = 'X'
+                        else:
+                            output_text = 'O'
                         item.setData(output_text, Qt.DisplayRole)
                     elif col == 14:  # del_type 매칭
                         if value == 0:
@@ -1558,7 +1735,7 @@ class UI_main(QMainWindow):
                         elif value == 1:
                             output_text = '부분 삭제'
                         elif value == 2:
-                            output_text = '모든 데이터 삭제'  # 바꿔야 함
+                            output_text = '모든 데이터 삭제\n부분 삭제\n자동 삭제'  # 바꿔야 함
                         elif value == 3:
                             output_text = '포맷'
                         elif value == 4:

@@ -110,5 +110,5 @@ class Association:
             connection.close()
 
 
-association_instance = Association("./IDIS_FS_sqlite.db")
-association_instance.parse()
+#association_instance = Association("./IDIS_FS_sqlite.db")
+#association_instance.parse()
