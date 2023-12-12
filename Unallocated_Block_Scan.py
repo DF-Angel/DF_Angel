@@ -464,11 +464,6 @@ class Unallocated_Block_Scan:
             return
 
         while i_frame_offset != -1 or p_frame_offset != -1:
-            #print(len(known_frame_set))
-            #print(len(unknown_frame_set))
-            #print(i_frame_offset)
-            #print(p_frame_offset)
-            #print(i_frame_offset)
             sel_type = 0
             if i_frame_offset != -1 and p_frame_offset != -1:
                 if i_frame_offset > p_frame_offset:
@@ -518,7 +513,7 @@ class Unallocated_Block_Scan:
                     ):
                         known_frame_set.append(
                             {
-                                "real_frame_offset": slack_start_offset + p_frame_offset,
+                                "real_frame_offset": slack_start_offset + p_frame_offset - meta_interval - (0xFF - common_frame_sig_idx),
                                 "frame_time": frame_time,
                                 "frame_size": frame_size,
                                 "frame_channel": frame_channel,
@@ -576,7 +571,7 @@ class Unallocated_Block_Scan:
                     ):
                         known_frame_set.append(
                             {
-                                "real_frame_offset": slack_start_offset + i_frame_offset,
+                                "real_frame_offset": slack_start_offset + i_frame_offset - meta_interval - (0xFF - common_frame_sig_idx),
                                 "frame_time": frame_time,
                                 "frame_size": frame_size,
                                 "frame_channel": frame_channel,
@@ -605,7 +600,7 @@ class Unallocated_Block_Scan:
 
         # 각 그룹 내에서 frame_time을 기준으로 정렬
         for channel, frames in channel_groups.items():
-            channel_groups[channel] = sorted(frames, key=lambda x: x["frame_time"])
+            channel_groups[channel] = sorted(frames, key=lambda x: (x["frame_time"], x["frame_offset"]))
 
         for channel, frames in channel_groups.items():
             bef_frame_time = channel_groups[channel][0]["frame_time"]
