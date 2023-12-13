@@ -917,7 +917,6 @@ class UI_main(QMainWindow):
         except Exception as e:
             print(f"ps_filtered_data() exception occurred: {e}")
 
-
     # ======================= 3. Allocated =========================
     def update_allocated(self):
         print("update_allocated")
@@ -1104,27 +1103,17 @@ class UI_main(QMainWindow):
             if not self.logfile_opened:
                 logfilepath, _ = QFileDialog.getOpenFileName(self, "Open log file", "",
                                                              "All Files (*)")  # filepath에 경로 저장
-
-                # self.logfilepath = logfilepath.split("/")[-1]  # 경로에서 파일 이름만 추출해 전역변수 저장
-
                 if logfilepath:
-                    # 화면이 처리 중임을 나타내는 메시지 창 표시
-                    processing_msg = "로그 파일 처리 중입니다. 잠시만 기다려주세요..."
-                    QMessageBox.information(self, "처리 중", processing_msg, QMessageBox.Ok)
 
                     log = LogParser(logfilepath)  # LogParser()에 경로 넘기고 객체로 받기
 
-                    log.parse()  # DB 생성?
+                    log.parse()  # DB 생성
 
                     db_filepath = './IDIS_FS_sqlite.db'
                     self.update_log(db_filepath)  # 로그 처리 메서드 호출
                     self.show_warning_message_log(db_filepath)
 
                     self.logfile_opened = True
-
-
-
-
             else:
                 db_filepath = './IDIS_FS_sqlite.db'
                 self.update_log(db_filepath)
@@ -1742,6 +1731,18 @@ class UI_main(QMainWindow):
                             output_text = '슬랙'
                         else:
                             output_text = ''
+                        item.setData(output_text, Qt.DisplayRole)
+                    elif col == 13:  # 삭제 여부
+                        if value == 0:
+                            output_text = 'X'
+                        else:
+                            output_text = 'O'
+                        item.setData(output_text, Qt.DisplayRole)
+                    elif col == 14:  # del_type 매칭
+                        if value == 0:
+                            output_text = '로그'
+                        elif value == 1:
+                            output_text = '정밀 스캔'
                         item.setData(output_text, Qt.DisplayRole)
                     else:
                         item.setData(value, Qt.DisplayRole)
