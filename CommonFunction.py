@@ -21,13 +21,7 @@ def process_frame_set(frame_set, status, block_cnt, AU, file):#AU는 할당/비�
     #print(hex(frame_set[-1]["frame_offset"]))
     global idx
     # Process and organize the complete set of frames
-    base = 0x80100000 + 0x10000000 * block_cnt + 0x500000
-    start_time = frame_set[0]["frame_time"]
-    last_time = frame_set[-1]["frame_time"]
-    channel = frame_set[0]["frame_channel"]
-    start_offset = hex(frame_set[0]["frame_offset"])
-    last_offset = hex(frame_set[-1]["frame_offset"])
-    del_type = ''
+
 
 
     if status == 0:
@@ -41,7 +35,6 @@ def process_frame_set(frame_set, status, block_cnt, AU, file):#AU는 할당/비�
     elif status == 4:
         del_type = "Slack(Unknown)"
 
-    duration = str(frame_set[-1]["frame_time"] - frame_set[0]["frame_time"] + timedelta(seconds=1))
 
     i_frame_cnt = 0
     p_frame_cnt = 0
@@ -64,6 +57,14 @@ def process_frame_set(frame_set, status, block_cnt, AU, file):#AU는 할당/비�
                                      status, i_frame_cnt,
                                      p_frame_cnt, 1)
         else:
+            base = 0x80100000 + 0x10000000 * block_cnt + 0x500000
+            start_time = frame_set[0]["frame_time"]
+            last_time = frame_set[-1]["frame_time"]
+            channel = frame_set[0]["frame_channel"]
+            start_offset = hex(frame_set[0]["frame_offset"])
+            last_offset = hex(frame_set[-1]["frame_offset"])
+            del_type = ''
+            duration = str(frame_set[-1]["frame_time"] - frame_set[0]["frame_time"] + timedelta(seconds=1))
             for frame in frame_set:
                 file.seek(frame["h264_frame_offset"], 0)
                 data += file.read(frame["h264_frame_size"])
@@ -82,6 +83,14 @@ def process_frame_set(frame_set, status, block_cnt, AU, file):#AU는 할당/비�
                                      status, i_frame_cnt,
                                      p_frame_cnt, AU)
     else:
+        base = 0x80100000 + 0x10000000 * block_cnt + 0x500000
+        start_time = frame_set[0]["frame_time"]
+        last_time = frame_set[-1]["frame_time"]
+        channel = frame_set[0]["frame_channel"]
+        start_offset = hex(frame_set[0]["frame_offset"])
+        last_offset = hex(frame_set[-1]["frame_offset"])
+        del_type = ''
+        duration = str(frame_set[-1]["frame_time"] - frame_set[0]["frame_time"] + timedelta(seconds=1))
         for frame in frame_set:
             if frame["frame_type"] == 0:
                 i_frame_cnt += 1
