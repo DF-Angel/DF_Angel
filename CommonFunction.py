@@ -51,23 +51,36 @@ def process_frame_set(frame_set, status, block_cnt, AU, file):#AU는 할당/비�
 
     if status == 4:
         data = b''
-        for frame in frame_set:
-            file.seek(frame["h264_frame_offset"], 0)
-            data += file.read(frame["h264_frame_size"])
-            if frame["frame_type"] == 0:
-                i_frame_cnt += 1
-                size += frame["frame_size"] + 0xA1
-            elif frame["frame_type"] == 1:
-                p_frame_cnt += 1
-                size += frame["frame_size"] + 0xA1
-        output_file = open('./'+str(idx)+'.bin', 'wb')
-        output_file.write(data)
-        insert_data_precise_scan(str(frame_set[0]["frame_time"]) + " ~ " + str(frame_set[-1]["frame_time"]), block_cnt,
-                                 frame_set[0]["frame_channel"], str(frame_set[0]["frame_time"]),
-                                 str(frame_set[-1]["frame_time"]), duration, frame_set[0]["real_frame_offset"],
-                                 frame_set[-1]["real_frame_offset"] + frame_set[-1]["frame_size"] + 0xA1, size,
-                                 status, i_frame_cnt,
-                                 p_frame_cnt, AU)
+        if AU == 2:
+            file.seek(frame_set[0])
+            data = file.read(frame_set[1])
+            output_file = open('./' + str(idx) + '.bin', 'wb')
+            output_file.write(data)
+            insert_data_precise_scan('Unknown Frame',
+                                     block_cnt,
+                                     -1, 'Unknown',
+                                     'Unknown', '00:00:01', frame_set[0],
+                                     frame_set[0] + frame_set[1], frame_set[1],
+                                     status, i_frame_cnt,
+                                     p_frame_cnt, 1)
+        else:
+            for frame in frame_set:
+                file.seek(frame["h264_frame_offset"], 0)
+                data += file.read(frame["h264_frame_size"])
+                if frame["frame_type"] == 0:
+                    i_frame_cnt += 1
+                    size += frame["frame_size"] + 0xA1
+                elif frame["frame_type"] == 1:
+                    p_frame_cnt += 1
+                    size += frame["frame_size"] + 0xA1
+            output_file = open('./'+str(idx)+'.bin', 'wb')
+            output_file.write(data)
+            insert_data_precise_scan(str(frame_set[0]["frame_time"]) + " ~ " + str(frame_set[-1]["frame_time"]), block_cnt,
+                                     frame_set[0]["frame_channel"], str(frame_set[0]["frame_time"]),
+                                     str(frame_set[-1]["frame_time"]), duration, frame_set[0]["real_frame_offset"],
+                                     frame_set[-1]["real_frame_offset"] + frame_set[-1]["frame_size"] + 0xA1, size,
+                                     status, i_frame_cnt,
+                                     p_frame_cnt, AU)
     else:
         for frame in frame_set:
             if frame["frame_type"] == 0:

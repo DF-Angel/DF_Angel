@@ -551,7 +551,7 @@ class Unallocated_Block_Scan:
             idx = 0
             #print(len(channel_groups[channel]))
             for frame_cnt in range(len(channel_groups[channel])):
-                print(frame_cnt)
+                #print(frame_cnt)
                 if channel_groups[channel][frame_cnt]["frame_time"] >= bef_frame_time + timedelta(seconds=2):
                     process_frame_set(channel_groups[channel][idx:frame_cnt], status, block_cnt, 1, file)
                     idx = frame_cnt
@@ -566,10 +566,5 @@ class Unallocated_Block_Scan:
                 i_frame_cnt = 1
             else:
                 p_frame_cnt = 1
-            insert_data_precise_scan('Unknown Frame',
-                                     block_cnt,
-                                     -1, 'Unknown',
-                                     'Unknown', '00:00:01',unknown_frame_set[i][0],
-                                     unknown_frame_set[i][0] + unknown_frame_set[i][1], unknown_frame_set[i][1],
-                                     status, i_frame_cnt,
-                                     p_frame_cnt, 1)
+            process_frame_set(unknown_frame_set[i], status, block_cnt, 2, file)
+
