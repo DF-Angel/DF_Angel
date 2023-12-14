@@ -14,10 +14,9 @@ class Root_Scan:
         with self.f as file:
             base = 0x80100000
             file.seek(base + 0x500000, 0)
-            magic_signature = file.read(64)
+            magic_signature = file.read(128)
             if magic_signature[:0x1B] != b"This is G2FDb Storage Magic":
                 return 0 #비정상적인 G2FDb 이미지 파일 판단
-            file.read(64)
 
             block_cnt = 1
             while True:
@@ -25,6 +24,7 @@ class Root_Scan:
                 if int.from_bytes(block_index[:64], byteorder='little') == 0x00:
                     break
                 if block_index[0] != 0x05 and block_index[0] != 0x06:
+                    block_cnt += 1
                     continue
                 start_time = convert_to_datetime(int.from_bytes(block_index[0x06:0x0A], byteorder='little'))
                 end_time = convert_to_datetime(int.from_bytes(block_index[0x12:0x16], byteorder='little'))

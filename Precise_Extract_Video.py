@@ -21,47 +21,55 @@ def extract_data_from_db(db_filepath, image_filepath, output_folder, selected_in
 
     for index in selected_indexes:
         logging.info(f"Processing index: {index}")
-        cursor.execute("SELECT START_OFFSET, SIZE FROM PRECISE_SCAN WHERE idx=?", (index,))
+        cursor.execute("SELECT START_OFFSET, END_OFFSET, DEL_TYPE, SIZE, I_FRAME, P_FRAME FROM PRECISE_SCAN WHERE idx=?", (index,))
         row = cursor.fetchone()
 
         if not row:
             logging.warning(f"No data found for index {index}.")
             continue
 
-        start_offset, size = row
+        start_offset, end_offset, del_type, size, i_frame_count, p_frames = row
         frame_data_file = os.path.join(output_folder, f"{index}.bin")
         
         if size == 0:
             logging.info(f"Index {index} has zero size, skipping extraction.")
             continue
 
-        p_frames = 0
         i_frame_found = False
-        i_frame_count = 0
+        if i_frame_count != 0:
+            i_frame_found = True
 
-        with open(frame_data_file, 'wb') as fd_file, open(image_filepath, 'rb') as file:
-            
-            metadata = file.read(0xA0200000)
-            frame_type = metadata[26]
-            if frame_type == 0x00:  # I-frame
-                if not i_frame_found:
-                    i_frame_found = True
-                else:
-                    i_frame_count += 1
-            elif frame_type == 0x01 and i_frame_found:  # P-frame
-                p_frames += 1            
+        if del_type == 4:
+            with open(frame_data_file, 'wb') as fd_file, open('./'+str(index)+'.bin', 'rb') as origin_file:
+                fd_file.write(origin_file.read())
+        else:
+            with open(frame_data_file, 'wb') as fd_file, open(image_filepath, 'rb') as file:
+                file.seek(start_offset, 0)
+                while file.tell() < end_offset:
+                    metadata = file.read(0xFF)
+                    frame_type = metadata[0x1A]
+                    frame_size = int.from_bytes(metadata[0x10:0x14], byteorder='little')
+                    data = b''
+                    sps_offset = 0
+                    p_frame_offset = 0
 
-            file.seek(start_offset + 0xC4)
-            data = file.read(size)
-            fd_file.write(data)
+                    if frame_type == 0:
+                        sps_offset = metadata.find(b'\x00\x00\x00\x01\x67', 0)
+                        file.seek(sps_offset - 0xFF, 1)
+                        data = file.read(frame_size + 0xA1 - sps_offset)
+                    elif frame_type == 1:
+                        p_frame_offset = metadata.find(b'\x00\x00\x00\x01\x21', 0)
+                        file.seek(p_frame_offset - 0xFF, 1)
+                        data = file.read(frame_size + 0xA1 - p_frame_offset)
+                    fd_file.write(data)
 
-    frame_cycle = p_frames + 1 if i_frame_count == 0 else p_frames / i_frame_count
-    speed_factor = 25.0 / frame_cycle
-    logging.info(f"Speed factor for index {index}: {speed_factor}")
+        frame_cycle = p_frames + 1 if i_frame_count == 0 else p_frames / i_frame_count
+        speed_factor = 25.0 / frame_cycle
+        logging.info(f"Speed factor for index {index}: {speed_factor}")
 
-    # 모든 프레임 데이터가 추출된 후 MP4로 변환
-    output_mp4_file = os.path.join(output_folder, 'Extracted', f'precise_{index}.mp4')
-    convert_to_mp4(frame_data_file, output_mp4_file, speed_factor)
+        # 모든 프레임 데이터가 추출된 후 MP4로 변환
+        output_mp4_file = os.path.join(output_folder, 'Extracted', f'precise_{index}.mp4')
+        convert_to_mp4(frame_data_file, output_mp4_file, speed_factor)
 
     cursor.close()
     connection.close()
