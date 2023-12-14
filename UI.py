@@ -527,8 +527,9 @@ class UI_main(QMainWindow):
                     if current_base != base:  # 이미 해당 기수로 표현되어 있지 않은 경우에만 변환
                         if base == 16:  # 10 -> 16
                             value = int(item.text())
-                            hex_value = hex(value)[2:]  # 0x
-                            item.setText(hex_value)
+                            #hex_value = hex(value)[2:]  # 0x
+                            hex_value = hex(value)[2:].upper()
+                            item.setText('0x'+hex_value)
                             self.current_base[(row, col_index)] = base  # 현재 기수 정보 저장
                         elif base == 10:  # 16 -> 10
                             value = int(item.text(), 16)

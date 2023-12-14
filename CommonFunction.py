@@ -60,7 +60,7 @@ def process_frame_set(frame_set, status, block_cnt, AU, file):#AU는 할당/비�
             elif frame["frame_type"] == 1:
                 p_frame_cnt += 1
                 size += frame["frame_size"] + 0xA1
-        output_file = open('./'+str(idx)+'.bin', 'rb')
+        output_file = open('./'+str(idx)+'.bin', 'wb')
         output_file.write(data)
         insert_data_precise_scan(str(frame_set[0]["frame_time"]) + " ~ " + str(frame_set[-1]["frame_time"]), block_cnt,
                                  frame_set[0]["frame_channel"], str(frame_set[0]["frame_time"]),

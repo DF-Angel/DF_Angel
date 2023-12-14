@@ -400,6 +400,7 @@ class Unallocated_Block_Scan:
             return
 
         while i_frame_offset != -1 or p_frame_offset != -1:
+            #print(len(known_frame_set))
             sel_type = 0
             if i_frame_offset != -1 and p_frame_offset != -1:
                 if i_frame_offset > p_frame_offset:
@@ -532,6 +533,7 @@ class Unallocated_Block_Scan:
             unknown_frame_set[-1][1] = slack_end_offset - unknown_frame_set[-1][0]
         #print(len(known_frame_set))
         # frame_channel을 기준으로 그룹화
+        #print('aaaaaaaaaaaaaaaaaa')
         channel_groups = {}
         for frame in known_frame_set:
             channel = frame["frame_channel"]
@@ -543,17 +545,20 @@ class Unallocated_Block_Scan:
         for channel, frames in channel_groups.items():
             channel_groups[channel] = sorted(frames, key=lambda x: (x["frame_time"], x["frame_offset"]))
 
-
+        #print('bbbbbbbbbbbbbbb')
         for channel, frames in channel_groups.items():
             bef_frame_time = channel_groups[channel][0]["frame_time"]
             idx = 0
+            #print(len(channel_groups[channel]))
             for frame_cnt in range(len(channel_groups[channel])):
+                print(frame_cnt)
                 if channel_groups[channel][frame_cnt]["frame_time"] >= bef_frame_time + timedelta(seconds=2):
                     process_frame_set(channel_groups[channel][idx:frame_cnt], status, block_cnt, 1, file)
                     idx = frame_cnt
                 bef_frame_time = channel_groups[channel][frame_cnt]["frame_time"]
             process_frame_set(channel_groups[channel][idx:len(channel_groups[channel])], status, block_cnt, 1, file)
-
+        #print(len(known_frame_set))
+        #print(len(unknown_frame_set))
         for i in range(len(unknown_frame_set)):
             i_frame_cnt = 0
             p_frame_cnt = 0
